@@ -1,6 +1,6 @@
 """
 supabase_client.py — Cliente Supabase para Inteligencia Territorial
-Inicialización lazy para evitar crash al importar si faltan credenciales.
+Inicialización lazy. Signup con sesión activa para pasar RLS.
 """
 
 import streamlit as st
@@ -12,7 +12,6 @@ from config import SUPABASE_URL, SUPABASE_KEY
 # INICIALIZACIÓN LAZY
 # ============================================
 def _get_client():
-    """Retorna un cliente Supabase cacheado en session_state."""
     if "sb_client" not in st.session_state:
         if not SUPABASE_URL or not SUPABASE_KEY:
             return None
@@ -26,7 +25,6 @@ def _get_client():
 
 
 def test_connection() -> bool:
-    """Verifica que se puede conectar a Supabase."""
     client = _get_client()
     if not client:
         return False
@@ -42,16 +40,32 @@ def test_connection() -> bool:
 # AUTENTICACIÓN
 # ============================================
 def signup_user(email: str, password: str, nombre: str, tipo_actor: str) -> Dict[str, Any]:
+    """
+    Signup en dos pasos:
+      1) auth.sign_up  → crea usuario en Auth
+      2) Hacer sign_in para tener sesión (auth.uid() activo para RLS)
+      3) INSERT en users_profiles (ahora pasa la policy)
+      4) sign_out para que el usuario haga login explícito
+    """
     client = _get_client()
     if not client:
         return {"success": False, "error": "Sin conexión a Supabase"}
     try:
+        # 1. Crear usuario
         auth_resp = client.auth.sign_up({"email": email, "password": password})
         if not auth_resp.user:
             return {"success": False, "error": "No se pudo crear el usuario"}
 
         user_id = auth_resp.user.id
 
+        # 2. Si no hay sesión activa tras el signup, hacer login explícito
+        if not auth_resp.session:
+            try:
+                client.auth.sign_in_with_password({"email": email, "password": password})
+            except Exception:
+                pass
+
+        # 3. Insertar perfil (ahora auth.uid() == user_id → pasa RLS)
         client.table("users_profiles").insert({
             "auth_user_id": user_id,
             "nombre": nombre,
@@ -59,15 +73,35 @@ def signup_user(email: str, password: str, nombre: str, tipo_actor: str) -> Dict
             "tipo_actor": tipo_actor,
         }).execute()
 
+        # 4. Cerrar sesión temporal
+        try:
+            client.auth.sign_out()
+        except Exception:
+            pass
+
         return {
             "success": True,
             "user_id": user_id,
-            "message": f"Cuenta creada para {nombre}. Revisa tu email para confirmar.",
+            "message": f"Cuenta creada para {nombre}.",
         }
+
     except Exception as e:
         msg = str(e)
+        try:
+            client.auth.sign_out()
+        except Exception:
+            pass
+
         if "already registered" in msg.lower() or "already been registered" in msg.lower():
             return {"success": False, "error": "Este email ya está registrado"}
+        if "row-level security" in msg.lower() or "42501" in msg:
+            return {
+                "success": False,
+                "error": (
+                    "Error de permisos en la BD. Ejecuta el SQL de fix de RLS "
+                    "(FIX_RLS.sql) en el SQL Editor de Supabase."
+                ),
+            }
         return {"success": False, "error": f"Error: {msg}"}
 
 
@@ -86,11 +120,7 @@ def login_user(email: str, password: str) -> Dict[str, Any]:
         if not profile:
             return {"success": False, "error": "No se encontró perfil de usuario"}
 
-        return {
-            "success": True,
-            "user_id": user_id,
-            "profile": profile,
-        }
+        return {"success": True, "user_id": user_id, "profile": profile}
     except Exception as e:
         msg = str(e)
         if "invalid" in msg.lower() or "credentials" in msg.lower():
@@ -124,7 +154,7 @@ def update_user_profile(user_id: str, updates: Dict) -> bool:
 
 
 # ============================================
-# PUNTOS (UBICACIONES)
+# PUNTOS
 # ============================================
 def create_punto(user_id: str, lat: float, lon: float,
                  cuenca: str = "N/A", subcuenca: str = "N/A",
@@ -134,8 +164,7 @@ def create_punto(user_id: str, lat: float, lon: float,
         return None
     try:
         resp = client.table("puntos").insert({
-            "lat": float(lat),
-            "lon": float(lon),
+            "lat": float(lat), "lon": float(lon),
             "cuenca": cuenca or "N/A",
             "subcuenca": subcuenca or "N/A",
             "subsubcuenca": subsubcuenca or "N/A",
@@ -153,8 +182,7 @@ def get_all_puntos() -> List[Dict]:
     if not client:
         return []
     try:
-        resp = client.table("puntos").select("*").execute()
-        return resp.data or []
+        return client.table("puntos").select("*").execute().data or []
     except Exception:
         return []
 
@@ -170,11 +198,8 @@ def create_observacion(user_id: str, punto_id: int, tipo: str,
         return None
     try:
         payload = {
-            "punto_id": punto_id,
-            "autor_id": user_id,
-            "tipo": tipo,
-            "titulo": titulo,
-            "descripcion": descripcion,
+            "punto_id": punto_id, "autor_id": user_id,
+            "tipo": tipo, "titulo": titulo, "descripcion": descripcion,
             "dim_agua": dimensiones.get("agua", "NS/NR"),
             "dim_entorno": dimensiones.get("entorno", "NS/NR"),
             "dim_social": dimensiones.get("social", "NS/NR"),
@@ -183,7 +208,6 @@ def create_observacion(user_id: str, punto_id: int, tipo: str,
             "dim_regeneracion": dimensiones.get("regeneracion", "NS/NR"),
             "dim_importancia_lugar": dimensiones.get("importancia_lugar", ""),
         }
-
         if modulo_datos and tipo == "Conflicto":
             payload.update({
                 "conflicto_actores_involucrados": modulo_datos.get("actores"),
@@ -221,8 +245,7 @@ def get_all_observaciones() -> List[Dict]:
     if not client:
         return []
     try:
-        resp = client.table("observaciones").select("*").order("created_at", desc=True).execute()
-        return resp.data or []
+        return client.table("observaciones").select("*").order("created_at", desc=True).execute().data or []
     except Exception:
         return []
 
@@ -232,12 +255,9 @@ def get_observaciones_by_user(user_id: str) -> List[Dict]:
     if not client:
         return []
     try:
-        resp = (client.table("observaciones")
-                .select("*")
-                .eq("autor_id", user_id)
-                .order("created_at", desc=True)
-                .execute())
-        return resp.data or []
+        return (client.table("observaciones").select("*")
+                .eq("autor_id", user_id).order("created_at", desc=True)
+                .execute()).data or []
     except Exception:
         return []
 
@@ -275,7 +295,6 @@ def get_dashboard_stats() -> Dict:
             if c and c != "N/A":
                 cuencas.add(c)
 
-        # Dimensiones
         dims = {d: {} for d in ["agua", "entorno", "social", "gobernanza", "financiamiento", "regeneracion"]}
         for o in obs:
             for d in dims:
