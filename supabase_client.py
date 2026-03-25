@@ -41,31 +41,26 @@ def test_connection() -> bool:
 # ============================================
 def signup_user(email: str, password: str, nombre: str, tipo_actor: str) -> Dict[str, Any]:
     """
-    Signup en dos pasos:
-      1) auth.sign_up  → crea usuario en Auth
-      2) Hacer sign_in para tener sesión (auth.uid() activo para RLS)
-      3) INSERT en users_profiles (ahora pasa la policy)
-      4) sign_out para que el usuario haga login explícito
+    Signup:
+      1) auth.sign_up → crea usuario en auth.users
+      2) INSERT perfil en users_profiles
+         (la RLS policy permite INSERT con WITH CHECK (true) — ver FIX_RLS.sql)
+      3) Si hay sesión activa, cerrarla para que el usuario haga login explícito
     """
     client = _get_client()
     if not client:
         return {"success": False, "error": "Sin conexión a Supabase"}
     try:
-        # 1. Crear usuario
+        # 1. Crear usuario en Auth
         auth_resp = client.auth.sign_up({"email": email, "password": password})
         if not auth_resp.user:
             return {"success": False, "error": "No se pudo crear el usuario"}
 
         user_id = auth_resp.user.id
 
-        # 2. Si no hay sesión activa tras el signup, hacer login explícito
-        if not auth_resp.session:
-            try:
-                client.auth.sign_in_with_password({"email": email, "password": password})
-            except Exception:
-                pass
-
-        # 3. Insertar perfil (ahora auth.uid() == user_id → pasa RLS)
+        # 2. Insertar perfil
+        #    Con la policy "WITH CHECK (true)" en FIX_RLS.sql, esto funciona
+        #    independientemente de si hay sesión activa o confirm email habilitado.
         client.table("users_profiles").insert({
             "auth_user_id": user_id,
             "nombre": nombre,
@@ -73,36 +68,47 @@ def signup_user(email: str, password: str, nombre: str, tipo_actor: str) -> Dict
             "tipo_actor": tipo_actor,
         }).execute()
 
-        # 4. Cerrar sesión temporal
+        # 3. Limpiar sesión si quedó abierta
         try:
             client.auth.sign_out()
         except Exception:
             pass
 
-        return {
-            "success": True,
-            "user_id": user_id,
-            "message": f"Cuenta creada para {nombre}.",
-        }
+        # Mensaje según si hay confirmación de email
+        has_session = auth_resp.session is not None
+        if has_session:
+            msg = f"Cuenta creada para {nombre}. Ya puedes iniciar sesión."
+        else:
+            msg = f"Cuenta creada para {nombre}. Revisa tu email para confirmar y luego inicia sesión."
+
+        return {"success": True, "user_id": user_id, "message": msg}
 
     except Exception as e:
-        msg = str(e)
+        err = str(e)
         try:
             client.auth.sign_out()
         except Exception:
             pass
 
-        if "already registered" in msg.lower() or "already been registered" in msg.lower():
+        if "already registered" in err.lower() or "already been registered" in err.lower():
             return {"success": False, "error": "Este email ya está registrado"}
-        if "row-level security" in msg.lower() or "42501" in msg:
+        if "row-level security" in err.lower() or "42501" in err:
             return {
                 "success": False,
                 "error": (
-                    "Error de permisos en la BD. Ejecuta el SQL de fix de RLS "
-                    "(FIX_RLS.sql) en el SQL Editor de Supabase."
+                    "Error de permisos. Ejecuta FIX_RLS.sql en el SQL Editor "
+                    "de Supabase (Dashboard → SQL Editor → pega el contenido → Run)."
                 ),
             }
-        return {"success": False, "error": f"Error: {msg}"}
+        if "email" in err.lower() and "confirm" in err.lower():
+            return {
+                "success": False,
+                "error": (
+                    "Email requiere confirmación. Desactiva 'Confirm email' en "
+                    "Supabase → Authentication → Settings → Email, o confirma tu email."
+                ),
+            }
+        return {"success": False, "error": f"Error: {err}"}
 
 
 def login_user(email: str, password: str) -> Dict[str, Any]:
