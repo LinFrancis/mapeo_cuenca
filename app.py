@@ -427,24 +427,43 @@ def sec_explorar():
 def sec_mapa():
     hero("Mapa territorial de cuencas")
     demo_banner()
-    st.markdown('<div class="edu">Visualiza registros como marcadores o como <strong>mapa de calor por cuencas</strong>. La vista coroplética pinta las cuencas según la densidad de registros.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="edu">Visualiza registros como marcadores, mapa de calor o <strong>mapa coroplético</strong> pintando cuencas por densidad. Selecciona el nivel territorial: cuenca, subcuenca o subsubcuenca.</div>', unsafe_allow_html=True)
 
     s = stats()
     if not s or s.get("total", 0) == 0: st.info("Sin datos."); return
     obs, pts = s["observaciones"], s["puntos"]
     pm = {p["id"]: p for p in pts}
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1: ft = st.multiselect("Tipo", TIPOS_REGISTRO, default=TIPOS_REGISTRO, key="mft")
     with c2: fc = st.selectbox("Cuenca", ["Todas"] + s.get("cuencas_list", []), key="mfc")
-    with c3: vista = st.radio("Vista", ["📍 Marcadores", "🎨 Mapa de calor", "🗺️ Coroplético"], horizontal=True)
+
+    # Level selector (applies to ALL views)
+    nivel = st.radio("Nivel territorial", ["Cuencas", "Subcuencas", "Subsubcuencas"], horizontal=True, key="mniv")
+    vista = st.radio("Vista del mapa", ["📍 Marcadores", "🎨 Mapa de calor", "🗺️ Coroplético (capas de color)"], horizontal=True)
 
     filtered = [(o, pm[o["punto_id"]]) for o in obs if o["tipo"] in ft and o["punto_id"] in pm and (fc == "Todas" or pm[o["punto_id"]].get("cuenca") == fc)]
     st.caption(f"**{len(filtered)}** registros")
 
     m = folium.Map(location=MAP_CENTER, zoom_start=MAP_ZOOM, tiles="CartoDB positron")
 
+    # Try to load choropleth layer (used by coropletico and optionally as overlay)
+    nivel_key = nivel.lower()
+    gdf_layer = None
+    try:
+        from geo_utils import get_geojson_simplified, build_choropleth_data
+        gdf_layer = get_geojson_simplified(nivel_key)
+    except Exception:
+        pass
+
     if vista == "📍 Marcadores":
+        # Optionally show cuenca boundaries as light overlay
+        if gdf_layer is not None:
+            folium.GeoJson(
+                gdf_layer.to_json(),
+                style_function=lambda x: {"fillColor": "transparent", "color": "#94A3B8", "weight": 0.8, "fillOpacity": 0},
+                tooltip=folium.GeoJsonTooltip(fields=["_name"], aliases=[nivel[:-1]]),
+            ).add_to(m)
         for o, p in filtered:
             t = o["tipo"]
             popup = f'<div style="max-width:260px;font-family:sans-serif"><strong>{o["titulo"]}</strong><br><span style="color:{COLORS[t]};font-weight:600">{EMOJIS[t]} {t}</span><br><small>📍 {p.get("cuenca","N/A")} → {p.get("subcuenca","")} → {p.get("subsubcuenca","")}</small></div>'
@@ -452,38 +471,49 @@ def sec_mapa():
                           icon=folium.Icon(color=FOLIUM_COLORS.get(t, "gray"), icon=FOLIUM_ICONS.get(t, "info-sign"), prefix="fa")).add_to(m)
 
     elif vista == "🎨 Mapa de calor":
+        # Show boundaries + heatmap
+        if gdf_layer is not None:
+            folium.GeoJson(
+                gdf_layer.to_json(),
+                style_function=lambda x: {"fillColor": "transparent", "color": "#94A3B8", "weight": 0.8, "fillOpacity": 0},
+                tooltip=folium.GeoJsonTooltip(fields=["_name"], aliases=[nivel[:-1]]),
+            ).add_to(m)
         heat_data = [[p["lat"], p["lon"]] for _, p in filtered]
         if heat_data: HeatMap(heat_data, radius=20, blur=15, max_zoom=10).add_to(m)
 
-    elif vista == "🗺️ Coroplético":
-        nivel = st.radio("Nivel", ["Cuencas", "Subcuencas", "Subsubcuencas"], horizontal=True, key="cniv")
-        nivel_key = nivel.lower()
-        try:
-            from geo_utils import get_geojson_simplified, build_choropleth_data
-            gdf = get_geojson_simplified(nivel_key)
-            if gdf is not None:
-                counts = build_choropleth_data(nivel_key, [o for o, _ in filtered], pts)
-                gdf["registros"] = gdf["_name"].map(counts).fillna(0).astype(int)
-                max_c = gdf["registros"].max() if gdf["registros"].max() > 0 else 1
-                import branca.colormap as cm
-                colormap = cm.LinearColormap(["#F0F4F8", "#FCD34D", "#EF4444"], vmin=0, vmax=max_c, caption="Registros")
-                folium.GeoJson(
-                    gdf.to_json(),
-                    style_function=lambda feat: {
-                        "fillColor": colormap(feat["properties"]["registros"]),
-                        "color": "#64748B", "weight": 0.8,
-                        "fillOpacity": 0.6 if feat["properties"]["registros"] > 0 else 0.1,
-                    },
-                    tooltip=folium.GeoJsonTooltip(fields=["_name", "registros"], aliases=[nivel[:-1], "Registros"]),
-                ).add_to(m)
-                colormap.add_to(m)
-            else:
-                st.warning("Shapefiles no disponibles para este nivel.")
-        except Exception as e:
-            st.warning(f"Error al cargar capa: {e}")
+    elif "Coroplético" in vista:
+        if gdf_layer is not None:
+            counts = build_choropleth_data(nivel_key, [o for o, _ in filtered], pts)
+            gdf_layer["registros"] = gdf_layer["_name"].map(counts).fillna(0).astype(int)
+            max_c = int(gdf_layer["registros"].max()) if gdf_layer["registros"].max() > 0 else 1
+
+            import branca.colormap as cm
+            colormap = cm.LinearColormap(["#F0F4F8", "#FCD34D", "#EF4444"], vmin=0, vmax=max_c, caption=f"Registros por {nivel[:-1].lower()}")
+
+            def style_fn(feat, _cm=colormap):
+                n = feat["properties"].get("registros", 0)
+                return {"fillColor": _cm(n), "color": "#64748B", "weight": 0.8,
+                        "fillOpacity": 0.65 if n > 0 else 0.08}
+
+            folium.GeoJson(
+                gdf_layer.to_json(),
+                style_function=style_fn,
+                tooltip=folium.GeoJsonTooltip(fields=["_name", "registros"], aliases=[nivel[:-1], "Registros"]),
+            ).add_to(m)
+            colormap.add_to(m)
+
+            # Summary table
+            with st.expander(f"📋 Tabla: registros por {nivel[:-1].lower()}"):
+                df_counts = gdf_layer[gdf_layer["registros"] > 0][["_name", "registros"]].sort_values("registros", ascending=False).rename(columns={"_name": nivel[:-1], "registros": "Registros"})
+                if len(df_counts) > 0:
+                    st.dataframe(df_counts, use_container_width=True, hide_index=True)
+                else:
+                    st.caption("No hay registros en este nivel.")
+        else:
+            st.warning(f"Shapefiles de {nivel.lower()} no disponibles. Verifica que la carpeta data/ contenga los archivos .shp de la DGA.")
 
     with st.expander("📐 Metodología del mapa"):
-        st.markdown('<div class="meth"><strong>Marcadores</strong>: Cada pin representa un registro individual. Color = tipo.<br><strong>Mapa de calor</strong>: Densidad de registros. Zonas rojas = alta concentración.<br><strong>Coroplético</strong>: Cuencas/subcuencas pintadas según cantidad de registros. Se usa la delimitación oficial de la DGA. Más oscuro = más registros.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="meth"><strong>Marcadores</strong>: Cada pin = un registro. Color = tipo.<br><strong>Mapa de calor</strong>: Densidad de registros. Rojo = alta concentración.<br><strong>Coroplético</strong>: Polígonos de la DGA pintados según cantidad de registros. Más oscuro = más registros. Funciona a nivel de cuenca, subcuenca y subsubcuenca.<br><br>Los límites de cuencas provienen de la <a href="https://dga.mop.gob.cl/administracionrecursoshidricos/mapoteca/Paginas/default.aspx">Mapoteca Digital de la DGA</a>.</div>', unsafe_allow_html=True)
 
     st_folium(m, width=None, height=550, returned_objects=[])
     footer()
