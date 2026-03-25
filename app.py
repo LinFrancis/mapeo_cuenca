@@ -10,263 +10,152 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
-
 from config import *
 from supabase_client import *
 
-# ============================================
-# PAGE CONFIG
-# ============================================
-st.set_page_config(
-    page_title="Inteligencia Territorial",
-    page_icon="🌊",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="Inteligencia Territorial", page_icon="🌊", layout="wide", initial_sidebar_state="expanded")
 
 # ============================================
 # CSS
 # ============================================
-st.markdown("""
-<style>
-    .block-container { padding-top: 1.5rem; }
-    .hero {
-        background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 50%, #134E4A 100%);
-        padding: 2rem 2.5rem; border-radius: 16px; color: white; margin-bottom: 1.5rem;
-        position: relative; overflow: hidden;
-    }
-    .hero::before {
-        content: ''; position: absolute; top: -50%; right: -20%;
-        width: 400px; height: 400px;
-        background: radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%);
-        pointer-events: none;
-    }
-    .hero h1 { margin: 0 0 0.3rem 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
-    .hero p  { margin: 0; opacity: 0.85; font-size: 0.95rem; }
-    .metric-card {
-        background: white; border: 1px solid #E2E8F0; border-radius: 12px;
-        padding: 1.2rem; text-align: center; transition: transform 0.15s;
-    }
-    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-    .metric-card .number { font-size: 2rem; font-weight: 700; line-height: 1.1; }
-    .metric-card .label  { font-size: 0.8rem; color: #64748B; margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .edu-box {
-        background: linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%);
-        border-left: 4px solid #2563EB; border-radius: 0 12px 12px 0;
-        padding: 1.2rem 1.5rem; margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
-    }
-    .step-badge {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        background: #2563EB; color: white; padding: 0.35rem 0.9rem;
-        border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.6rem;
-    }
-    .cuenca-card {
-        background: linear-gradient(135deg, #F0FDF4, #ECFDF5);
-        border: 1px solid #BBF7D0; border-radius: 12px; padding: 1rem 1.2rem; margin: 0.5rem 0;
-    }
-    .cuenca-card .title { font-weight: 600; color: #166534; font-size: 0.85rem; }
-    .cuenca-card .value { font-size: 0.95rem; color: #14532D; margin-top: 0.2rem; }
-    [data-testid="stSidebar"] { background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%); }
-    .tipo-badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-    .tipo-conflicto  { background: #FEE2E2; color: #991B1B; }
-    .tipo-iniciativa  { background: #DCFCE7; color: #166534; }
-    .tipo-actor       { background: #DBEAFE; color: #1E40AF; }
-    .tipo-oportunidad { background: #FEF3C7; color: #92400E; }
-    .demo-banner {
-        background: linear-gradient(135deg, #FEF3C7, #FDE68A); border: 2px solid #F59E0B;
-        border-radius: 12px; padding: 0.8rem 1.2rem; margin-bottom: 1rem;
-        display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;
-    }
-    .footer-livlin {
-        text-align: center; padding: 1.5rem 0; margin-top: 3rem;
-        border-top: 1px solid #E2E8F0; font-size: 0.8rem; color: #94A3B8;
-    }
-    .footer-livlin a { color: #2563EB; text-decoration: none; font-weight: 500; }
-    .footer-livlin a:hover { text-decoration: underline; }
-</style>
-""", unsafe_allow_html=True)
-
+st.markdown("""<style>
+.block-container{padding-top:1.5rem}
+.hero{background:linear-gradient(135deg,#0F172A 0%,#1E3A5F 50%,#134E4A 100%);padding:2rem 2.5rem;border-radius:16px;color:white;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-50%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(56,189,248,.12) 0%,transparent 70%);pointer-events:none}
+.hero h1{margin:0 0 .3rem;font-size:1.8rem;font-weight:700;letter-spacing:-.02em}
+.hero p{margin:0;opacity:.85;font-size:.95rem}
+.mc{background:white;border:1px solid #E2E8F0;border-radius:12px;padding:1.2rem;text-align:center;transition:transform .15s}
+.mc:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.mc .n{font-size:2rem;font-weight:700;line-height:1.1}
+.mc .l{font-size:.8rem;color:#64748B;margin-top:.3rem;text-transform:uppercase;letter-spacing:.05em}
+.edu{background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border-left:4px solid #2563EB;border-radius:0 12px 12px 0;padding:1.2rem 1.5rem;margin:1rem 0;font-size:.9rem;line-height:1.6}
+.sb{display:inline-flex;align-items:center;gap:.5rem;background:#2563EB;color:white;padding:.35rem .9rem;border-radius:20px;font-size:.8rem;font-weight:600;margin-bottom:.6rem}
+.cc{background:linear-gradient(135deg,#F0FDF4,#ECFDF5);border:1px solid #BBF7D0;border-radius:12px;padding:1rem 1.2rem;margin:.5rem 0}
+.cc .t{font-weight:600;color:#166534;font-size:.85rem}
+.cc .v{font-size:.95rem;color:#14532D;margin-top:.2rem}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#F8FAFC,#F1F5F9)}
+.tb{display:inline-block;padding:.2rem .7rem;border-radius:12px;font-size:.75rem;font-weight:600}
+.tc{background:#FEE2E2;color:#991B1B}.ti{background:#DCFCE7;color:#166534}
+.ta{background:#DBEAFE;color:#1E40AF}.to{background:#FEF3C7;color:#92400E}
+.demo-b{background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:2px solid #F59E0B;border-radius:12px;padding:.8rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;font-size:.85rem}
+.foot{text-align:center;padding:1.5rem 0;margin-top:3rem;border-top:1px solid #E2E8F0;font-size:.82rem;color:#94A3B8}
+.foot a{color:#2563EB;text-decoration:none;font-weight:600}
+.foot a:hover{text-decoration:underline}
+.meth{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:1rem;font-size:.85rem;line-height:1.6;color:#475569}
+</style>""", unsafe_allow_html=True)
 
 # ============================================
-# SESSION STATE
+# STATE
 # ============================================
-for key, default in [
-    ("user", None), ("profile", None), ("punto_seleccionado", None),
-    ("registro_temp", {}), ("cuenca_info", None),
-    ("show_cuencas_layer", False), ("demo_mode", False),
-]:
-    if key not in st.session_state:
-        st.session_state[key] = default
-
+for k, v in [("user", None), ("profile", None), ("punto_seleccionado", None),
+             ("registro_temp", {}), ("cuenca_info", None), ("show_cuencas_layer", False), ("demo_mode", False)]:
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # ============================================
-# DEMO DATA HELPERS
+# HELPERS
 # ============================================
 @st.cache_data
 def _load_demo():
     from demo_data import generate_demo_data
     return generate_demo_data()
 
-
 def get_demo_stats():
-    """Construye stats idénticas a get_dashboard_stats pero con datos demo."""
     data = _load_demo()
-    obs = data["observaciones"]
-    puntos = data["puntos"]
-
+    obs, puntos = data["observaciones"], data["puntos"]
     by_tipo = {}
-    for o in obs:
-        t = o["tipo"]
-        by_tipo[t] = by_tipo.get(t, 0) + 1
-
-    cuencas = set()
-    for p in puntos:
-        c = p.get("cuenca", "N/A")
-        if c and c != "N/A":
-            cuencas.add(c)
-
+    for o in obs: by_tipo[o["tipo"]] = by_tipo.get(o["tipo"], 0) + 1
+    cuencas = set(p["cuenca"] for p in puntos if p.get("cuenca") and p["cuenca"] != "N/A")
     dims = {d: {} for d in ["agua", "entorno", "social", "gobernanza", "financiamiento", "regeneracion"]}
     for o in obs:
         for d in dims:
             val = o.get(f"dim_{d}", "NS/NR")
             dims[d][val] = dims[d].get(val, 0) + 1
-
-    return {
-        "total": len(obs), "total_puntos": len(puntos),
-        "by_tipo": by_tipo, "cuencas_unicas": len(cuencas),
-        "cuencas_list": sorted(cuencas), "dimensiones": dims,
-        "observaciones": obs, "puntos": puntos,
-    }
-
-
-# ============================================
-# HELPERS
-# ============================================
-def render_hero(subtitle="Mapeando cuencas, construyendo territorio"):
-    st.markdown(f"""
-    <div class="hero">
-        <h1>🌊 Inteligencia Territorial</h1>
-        <p>{subtitle}</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_demo_banner():
-    if st.session_state.demo_mode:
-        st.markdown("""
-        <div class="demo-banner">
-            <strong>🧪 MODO DEMOSTRACIÓN</strong> — Datos ficticios (100 registros).
-            Para ver datos reales, desactiva el modo demo en el sidebar.
-        </div>
-        """, unsafe_allow_html=True)
-
-
-def render_footer():
-    st.markdown("""
-    <div class="footer-livlin">
-        ¿Quieres llevar esta plataforma al siguiente nivel? Conversemos →
-        <a href="https://livlin.cl" target="_blank">livlin.cl</a><br>
-        <span style="font-size:0.7rem; color:#CBD5E1;">Desarrollo de aplicaciones territoriales · Inteligencia de datos · Gobernanza digital</span>
-    </div>
-    """, unsafe_allow_html=True)
-
+    return {"total": len(obs), "total_puntos": len(puntos), "by_tipo": by_tipo,
+            "cuencas_unicas": len(cuencas), "cuencas_list": sorted(cuencas),
+            "dimensiones": dims, "observaciones": obs, "puntos": puntos}
 
 def get_active_stats():
-    """Retorna stats de demo o reales según el modo activo."""
-    if st.session_state.demo_mode:
-        return get_demo_stats()
-    return get_dashboard_stats()
+    return get_demo_stats() if st.session_state.demo_mode else get_dashboard_stats()
 
+def hero(sub="Mapeando cuencas, construyendo territorio"):
+    st.markdown(f'<div class="hero"><h1>🌊 Inteligencia Territorial</h1><p>{sub}</p></div>', unsafe_allow_html=True)
+
+def demo_banner():
+    if st.session_state.demo_mode:
+        st.markdown('<div class="demo-b"><strong>🧪 MODO DEMOSTRACIÓN</strong> — 100 registros ficticios para explorar la plataforma completa.</div>', unsafe_allow_html=True)
+
+def footer():
+    st.markdown("""<div class="foot">
+        <a href="https://livlin.cl" target="_blank">livlin.cl</a> — servicios profesionales para una vida regenerativa
+    </div>""", unsafe_allow_html=True)
+
+SCORE_MAP = {
+    "agua": {"Muy escasa": 1, "Escasa": 2, "Suficiente": 3, "Abundante": 4},
+    "entorno": {"Muy degradado": 1, "Degradado": 2, "En recuperación": 3, "Conservado": 4},
+    "social": {"Muy débil": 1, "Débil": 2, "Media": 3, "Fuerte": 4},
+    "gobernanza": {"Muy débil": 1, "Débil": 2, "Media": 3, "Fuerte": 4},
+    "financiamiento": {"Muy difícil": 1, "Difícil": 2, "Medio": 3, "Fácil": 4},
+    "regeneracion": {"Bajo": 1, "Medio": 2, "Alto": 3},
+}
+DIM_LABELS = {"agua": "💧 Agua", "entorno": "🌿 Entorno", "social": "👥 Social",
+              "gobernanza": "🏛️ Gobernanza", "financiamiento": "💰 Financ.", "regeneracion": "♻️ Regen."}
 
 # ============================================
-# AUTH SCREEN
+# AUTH
 # ============================================
 def pantalla_auth():
-    render_hero("Plataforma de mapeo territorial participativo para cuencas de Chile")
+    hero("Plataforma de mapeo territorial participativo para cuencas de Chile")
+    st.markdown('<div class="edu"><strong>Bienvenido/a</strong> — Registra conflictos, iniciativas, actores y oportunidades geolocalizados en las cuencas de Chile. Construye un diagnóstico colectivo del territorio.</div>', unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="edu-box">
-        <strong>Bienvenido/a</strong> — Esta plataforma permite a comunidades, organizaciones y
-        actores territoriales registrar conflictos, iniciativas, actores y oportunidades en las
-        cuencas hidrográficas de Chile. Cada punto se ubica geográficamente y se enriquece con
-        dimensiones transversales para construir un diagnóstico colectivo del territorio.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Demo access
-    st.markdown("---")
-    col_demo_l, col_demo, col_demo_r = st.columns([1, 2, 1])
-    with col_demo:
-        st.markdown("#### 🧪 Acceso rápido de demostración")
-        st.caption("Explora la plataforma con 100 registros ficticios sin necesidad de crear cuenta.")
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
+        st.markdown("#### 🧪 Explorar sin cuenta")
+        st.caption("Conoce toda la plataforma con 100 registros de demostración.")
         if st.button("Entrar en modo demostración", use_container_width=True, type="secondary"):
             st.session_state.demo_mode = True
             st.session_state.user = "demo"
-            st.session_state.profile = {
-                "nombre": "Usuario Demo",
-                "tipo_actor": "Sociedad Civil",
-                "organizacion": "Explorador/a",
-                "email": "demo@demo.cl",
-            }
+            st.session_state.profile = {"nombre": "Explorador/a Demo", "tipo_actor": "Sociedad Civil", "organizacion": "", "email": "demo@demo.cl"}
             st.rerun()
-    st.markdown("---")
-
-    col_l, col_form, col_r = st.columns([1, 2, 1])
-    with col_form:
+        st.divider()
         tab_login, tab_signup = st.tabs(["🔑 Iniciar Sesión", "📝 Crear Cuenta"])
-
         with tab_login:
-            with st.form("login_form"):
+            with st.form("login"):
                 email = st.text_input("Email")
-                password = st.text_input("Contraseña", type="password")
-                submitted = st.form_submit_button("Ingresar", use_container_width=True, type="primary")
-                if submitted:
-                    if not email or not password:
-                        st.error("Completa email y contraseña")
+                pw = st.text_input("Contraseña", type="password")
+                if st.form_submit_button("Ingresar", use_container_width=True, type="primary"):
+                    if not email or not pw:
+                        st.error("Completa ambos campos")
                     else:
                         with st.spinner("Validando..."):
-                            result = login_user(email, password)
-                            if result["success"]:
-                                st.session_state.user = result["user_id"]
-                                st.session_state.profile = result["profile"]
+                            r = login_user(email, pw)
+                            if r["success"]:
+                                st.session_state.user = r["user_id"]
+                                st.session_state.profile = r["profile"]
                                 st.session_state.demo_mode = False
                                 st.rerun()
                             else:
-                                st.error(result["error"])
-
+                                st.error(r["error"])
         with tab_signup:
-            with st.form("signup_form"):
+            with st.form("signup"):
                 nombre = st.text_input("Nombre completo")
-                email_s = st.text_input("Email", key="signup_email")
-                password_s = st.text_input("Contraseña (mín. 6 caracteres)", type="password", key="signup_pass")
-                tipo_actor = st.selectbox("Tipo de actor", TIPOS_ACTOR)
-                st.markdown("""
-                <div style="font-size:0.8rem; color:#64748B; margin:0.5rem 0;">
-                    <strong>Tipo de actor</strong>: indica desde qué perspectiva participas.
-                </div>
-                """, unsafe_allow_html=True)
-                submitted_s = st.form_submit_button("Crear Cuenta", use_container_width=True)
-                if submitted_s:
-                    ok_n, msg_n = validate_nombre(nombre)
-                    if not ok_n:
-                        st.error(msg_n)
-                    elif not validate_email(email_s):
-                        st.error("Email inválido")
+                email_s = st.text_input("Email", key="se")
+                pw_s = st.text_input("Contraseña (mín 6)", type="password", key="sp")
+                tipo = st.selectbox("Tipo de actor", TIPOS_ACTOR)
+                st.caption("El tipo de actor indica desde qué perspectiva participas en el territorio.")
+                if st.form_submit_button("Crear Cuenta", use_container_width=True):
+                    ok, msg = validate_nombre(nombre)
+                    if not ok: st.error(msg)
+                    elif not validate_email(email_s): st.error("Email inválido")
                     else:
-                        ok_p, msg_p = validate_password(password_s)
-                        if not ok_p:
-                            st.error(msg_p)
+                        ok2, msg2 = validate_password(pw_s)
+                        if not ok2: st.error(msg2)
                         else:
                             with st.spinner("Creando cuenta..."):
-                                result = signup_user(email_s, password_s, nombre, tipo_actor)
-                                if result["success"]:
-                                    st.success(result["message"])
-                                    st.info("Ahora puedes iniciar sesión.")
-                                else:
-                                    st.error(result["error"])
-
-    render_footer()
-
+                                r = signup_user(email_s, pw_s, nombre, tipo)
+                                if r["success"]: st.success(r["message"])
+                                else: st.error(r["error"])
+    footer()
 
 # ============================================
 # SIDEBAR
@@ -274,419 +163,346 @@ def pantalla_auth():
 def render_sidebar():
     with st.sidebar:
         is_demo = st.session_state.demo_mode
-        badge = " 🧪" if is_demo else ""
-        st.markdown(f"""
-        <div style="padding:1rem; background:white; border-radius:12px; border:1px solid #E2E8F0; margin-bottom:1rem;">
-            <div style="font-weight:600; font-size:1rem;">👤 {st.session_state.profile['nombre']}{badge}</div>
-            <div style="color:#64748B; font-size:0.8rem; margin-top:0.2rem;">
-                {st.session_state.profile['tipo_actor']}
-                {(' · ' + st.session_state.profile['organizacion']) if st.session_state.profile.get('organizacion') else ''}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        tag = " 🧪" if is_demo else ""
+        st.markdown(f'<div style="padding:1rem;background:white;border-radius:12px;border:1px solid #E2E8F0;margin-bottom:1rem"><div style="font-weight:600">👤 {st.session_state.profile["nombre"]}{tag}</div><div style="color:#64748B;font-size:.8rem;margin-top:.2rem">{st.session_state.profile["tipo_actor"]}</div></div>', unsafe_allow_html=True)
 
-        if is_demo:
-            secciones = ["🗺️ Mapa Global", "📊 Dashboard", "🔗 Análisis de Red"]
-        else:
-            secciones = ["📝 Nuevo Registro", "🗺️ Mapa Global", "📊 Dashboard", "🔗 Análisis de Red", "📋 Mis Registros", "⚙️ Perfil"]
-
-        seccion = st.radio("Navegación", secciones, label_visibility="collapsed")
+        secs = ["📝 Nuevo Registro", "🗺️ Mapa Global", "📊 Dashboard", "🔗 Análisis de Red", "📋 Mis Registros", "⚙️ Perfil"]
+        sec = st.radio("Navegación", secs, label_visibility="collapsed")
 
         st.divider()
-
-        # Demo toggle
-        demo_val = st.toggle("🧪 Modo demostración", value=st.session_state.demo_mode)
-        if demo_val != st.session_state.demo_mode:
-            st.session_state.demo_mode = demo_val
-            if demo_val:
+        dv = st.toggle("🧪 Modo demostración", value=is_demo)
+        if dv != is_demo:
+            st.session_state.demo_mode = dv
+            if dv:
                 st.session_state.user = "demo"
-                st.session_state.profile = {
-                    "nombre": "Usuario Demo", "tipo_actor": "Sociedad Civil",
-                    "organizacion": "Explorador/a", "email": "demo@demo.cl",
-                }
+                st.session_state.profile = {"nombre": "Explorador/a Demo", "tipo_actor": "Sociedad Civil", "organizacion": "", "email": "demo@demo.cl"}
             else:
                 st.session_state.user = None
                 st.session_state.profile = None
             st.rerun()
 
-        with st.expander("ℹ️ ¿Cómo usar esta plataforma?", expanded=False):
-            st.markdown("""
-            **Nuevo Registro**: Clic en mapa → formulario → guardar.
-
-            **Mapa Global**: Todos los registros con filtros.
-
-            **Dashboard**: Gráficos y diagnóstico multidimensional.
-
-            **Análisis de Red**: Conexiones entre actores, conflictos e iniciativas.
-
-            **Mis Registros**: Tus aportes personales.
-            """)
+        with st.expander("ℹ️ Guía rápida"):
+            st.markdown("**Nuevo Registro**: Clic en mapa → formulario → guardar.\n\n**Mapa Global**: Todos los registros con filtros.\n\n**Dashboard**: Diagnóstico multidimensional.\n\n**Análisis de Red**: Conexiones entre registros.\n\n**Mis Registros**: Tus aportes.")
 
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             for k in ["user", "profile", "punto_seleccionado", "registro_temp", "cuenca_info"]:
                 st.session_state[k] = None if k != "registro_temp" else {}
             st.session_state.demo_mode = False
             st.rerun()
-
-        return seccion
-
+        return sec
 
 # ============================================
-# NUEVO REGISTRO
+# NUEVO REGISTRO (funciona en demo también)
 # ============================================
-def seccion_nuevo_registro():
-    render_hero("Contribuye al mapa territorial de tu cuenca")
-    if st.session_state.demo_mode:
-        st.warning("El modo demo es solo lectura. Desactívalo para crear registros reales.")
-        return
+def seccion_registro():
+    hero("Contribuye al mapa territorial")
+    demo_banner()
+    is_demo = st.session_state.demo_mode
+
+    if is_demo:
+        st.markdown('<div class="edu">🧪 <strong>Modo exploración</strong> — Puedes recorrer todo el formulario para conocer qué información se recopila. Los datos no se guardan en la base de datos.</div>', unsafe_allow_html=True)
 
     st.markdown(INTRO_APP, unsafe_allow_html=True)
 
-    # PASO 1
-    st.markdown('<div class="step-badge">1 — UBICACIÓN</div>', unsafe_allow_html=True)
-    st.markdown("Haz **clic en el mapa** para seleccionar la ubicación.")
-    st.markdown(f'<div class="edu-box">{INTRO_CUENCA}</div>', unsafe_allow_html=True)
+    # Tipos de registro — explicación completa
+    with st.expander("📖 ¿Qué tipos de registro existen? (clic para expandir)"):
+        for tipo_key, info in TIPOS_EXPLICACION.items():
+            st.markdown(f"#### {info['emoji']} {info['titulo']}")
+            st.markdown(info["desc_larga"])
+            st.divider()
 
-    col_map, col_info = st.columns([3, 1])
-    with col_map:
+    # PASO 1
+    st.markdown('<div class="sb">1 — UBICACIÓN</div>', unsafe_allow_html=True)
+    st.markdown("Haz **clic en el mapa** para seleccionar la ubicación del registro.")
+
+    with st.expander("📖 ¿Qué es una cuenca hidrográfica?"):
+        st.markdown(INTRO_CUENCA)
+
+    col_m, col_i = st.columns([3, 1])
+    with col_m:
         m = folium.Map(location=MAP_CENTER, zoom_start=MAP_ZOOM, tiles="OpenStreetMap")
         try:
             from geo_utils import get_cuencas_geojson
-            cuencas_gdf = get_cuencas_geojson()
-            if cuencas_gdf is not None and st.session_state.get("show_cuencas_layer"):
-                folium.GeoJson(cuencas_gdf.to_json(), style_function=lambda x: {
-                    "fillColor": "#3B82F6", "color": "#1E40AF", "weight": 1, "fillOpacity": 0.08,
-                }).add_to(m)
-        except Exception:
-            pass
-        map_data = st_folium(m, width=None, height=450, returned_objects=["last_clicked"])
-
-    with col_info:
-        st.session_state.show_cuencas_layer = st.toggle("Mostrar cuencas BNA", value=st.session_state.get("show_cuencas_layer", False))
-        if map_data and map_data.get("last_clicked"):
-            lat = map_data["last_clicked"]["lat"]
-            lon = map_data["last_clicked"]["lng"]
+            g = get_cuencas_geojson()
+            if g is not None and st.session_state.show_cuencas_layer:
+                folium.GeoJson(g.to_json(), style_function=lambda x: {"fillColor": "#3B82F6", "color": "#1E40AF", "weight": 1, "fillOpacity": 0.08}).add_to(m)
+        except Exception: pass
+        md = st_folium(m, width=None, height=450, returned_objects=["last_clicked"])
+    with col_i:
+        st.session_state.show_cuencas_layer = st.toggle("Cuencas BNA", value=st.session_state.show_cuencas_layer)
+        if md and md.get("last_clicked"):
+            lat, lon = md["last_clicked"]["lat"], md["last_clicked"]["lng"]
             st.session_state.punto_seleccionado = {"lat": lat, "lon": lon}
-            st.success("📍 Punto seleccionado")
-            st.metric("Latitud", f"{lat:.4f}")
-            st.metric("Longitud", f"{lon:.4f}")
+            st.success("📍 Seleccionado")
+            st.metric("Lat", f"{lat:.4f}")
+            st.metric("Lon", f"{lon:.4f}")
             with st.spinner("Identificando cuenca..."):
                 try:
                     from geo_utils import identify_cuenca
                     ci = identify_cuenca(lat, lon)
                     st.session_state.cuenca_info = ci
-                    for level, label in [("cuenca", "🏔️ Cuenca"), ("subcuenca", "🏞️ Subcuenca"), ("subsubcuenca", "💧 Subsubcuenca")]:
-                        val = ci[level]
-                        color = "#166534" if val != "No identificada" else "#92400E"
-                        st.markdown(f'<div class="cuenca-card"><div class="title">{label}</div><div class="value" style="color:{color}">{val}</div></div>', unsafe_allow_html=True)
+                    for lv, lb in [("cuenca", "🏔️ Cuenca"), ("subcuenca", "🏞️ Subcuenca"), ("subsubcuenca", "💧 Subsubcuenca")]:
+                        v = ci[lv]
+                        c = "#166534" if v != "No identificada" else "#92400E"
+                        st.markdown(f'<div class="cc"><div class="t">{lb}</div><div class="v" style="color:{c}">{v}</div></div>', unsafe_allow_html=True)
                 except Exception:
                     st.session_state.cuenca_info = {"cuenca": "N/A", "subcuenca": "N/A", "subsubcuenca": "N/A"}
         else:
-            st.info("👆 Haz clic en el mapa")
+            st.info("👆 Clic en el mapa")
 
     if not st.session_state.punto_seleccionado:
+        footer()
         return
 
     st.divider()
 
     # PASO 2
-    st.markdown('<div class="step-badge">2 — TIPO DE REGISTRO</div>', unsafe_allow_html=True)
-    tipos_desc = {
-        "Conflicto": "Situaciones de tensión o daño socioambiental.",
-        "Iniciativa": "Acciones positivas de restauración o gestión.",
-        "Actor": "Personas u organizaciones relevantes en el territorio.",
-        "Oportunidad": "Ventanas de acción o financiamiento.",
-    }
-    tipo_registro = st.radio("Tipo", TIPOS_REGISTRO, horizontal=True, label_visibility="collapsed")
-    st.markdown(f'<div class="edu-box"><strong>{EMOJIS[tipo_registro]} {tipo_registro}</strong>: {tipos_desc[tipo_registro]}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sb">2 — TIPO DE REGISTRO</div>', unsafe_allow_html=True)
+    tipo_r = st.radio("Tipo", TIPOS_REGISTRO, horizontal=True, label_visibility="collapsed")
+    info_t = TIPOS_EXPLICACION[tipo_r]
+    st.markdown(f'<div class="edu"><strong>{info_t["emoji"]} {info_t["titulo"]}</strong>: {info_t["desc_corta"]}</div>', unsafe_allow_html=True)
+
+    with st.expander(f"📖 ¿Qué significa registrar un {tipo_r}?"):
+        st.markdown(info_t["desc_larga"])
 
     st.divider()
 
     # PASO 3
-    st.markdown('<div class="step-badge">3 — INFORMACIÓN GENERAL</div>', unsafe_allow_html=True)
-    titulo = st.text_input("📌 Título", max_chars=MAX_TITULO, placeholder="Ej: Sequía en río Maule")
-    descripcion = st.text_area("📝 Descripción", max_chars=MAX_DESCRIPCION, placeholder="Contexto territorial...", height=120)
+    st.markdown('<div class="sb">3 — INFORMACIÓN GENERAL</div>', unsafe_allow_html=True)
+    titulo = st.text_input("📌 Título", max_chars=MAX_TITULO, placeholder="Ej: Sequía en río Maule, Comité APR zona alta")
+    descripcion = st.text_area("📝 Descripción detallada", max_chars=MAX_DESCRIPCION, placeholder="Describe la situación, quiénes participan, desde cuándo ocurre, qué efectos tiene...", height=120)
 
     st.divider()
 
     # PASO 4
-    st.markdown(f'<div class="step-badge">4 — DETALLE: {tipo_registro.upper()}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sb">4 — DETALLE: {tipo_r.upper()}</div>', unsafe_allow_html=True)
     modulo = {}
-    if tipo_registro == "Conflicto":
+    if tipo_r == "Conflicto":
         c1, c2, c3 = st.columns(3)
-        with c1: modulo["actores"] = st.text_input("Actores involucrados")
-        with c2: modulo["gravedad"] = st.selectbox("Gravedad", CONFLICTO_GRAVEDAD)
-        with c3: modulo["dialogo"] = st.selectbox("Diálogo", CONFLICTO_DIALOGO)
-        modulo["duracion"] = st.selectbox("Duración", CONFLICTO_DURACION)
-    elif tipo_registro == "Iniciativa":
-        modulo["tipos"] = st.multiselect("Tipos", INICIATIVA_TIPOS, max_selections=3)
+        with c1: modulo["actores"] = st.text_input("Actores involucrados", placeholder="Ej: Minera vs comunidad")
+        with c2: modulo["gravedad"] = st.selectbox("Gravedad", CONFLICTO_GRAVEDAD, help="Bajo=molestia menor, Crítico=daño severo e irreversible")
+        with c3: modulo["dialogo"] = st.selectbox("Estado del diálogo", CONFLICTO_DIALOGO, help="Nulo=sin comunicación, Alto=negociación activa")
+        modulo["duracion"] = st.selectbox("Duración", CONFLICTO_DURACION, help="¿Hace cuánto existe este conflicto?")
+    elif tipo_r == "Iniciativa":
+        modulo["tipos"] = st.multiselect("Tipos de iniciativa", INICIATIVA_TIPOS, max_selections=3, help="Selecciona hasta 3 categorías")
         c1, c2 = st.columns(2)
-        with c1: modulo["estado"] = st.selectbox("Estado", INICIATIVA_ESTADO)
-        with c2: modulo["escala"] = st.selectbox("Escala", INICIATIVA_ESCALA)
-    elif tipo_registro == "Actor":
+        with c1: modulo["estado"] = st.selectbox("Estado actual", INICIATIVA_ESTADO, help="Idea=propuesta, En marcha=ejecutándose, Consolidado=funcionando")
+        with c2: modulo["escala"] = st.selectbox("Escala territorial", INICIATIVA_ESCALA, help="¿Qué alcance geográfico tiene?")
+    elif tipo_r == "Actor":
         c1, c2 = st.columns(2)
-        with c1: modulo["nombre"] = st.text_input("Nombre")
-        with c2: modulo["tipo"] = st.selectbox("Tipo", ACTOR_TIPO)
-    elif tipo_registro == "Oportunidad":
+        with c1: modulo["nombre"] = st.text_input("Nombre del actor/organización")
+        with c2: modulo["tipo"] = st.selectbox("Tipo de organización", ACTOR_TIPO)
+    elif tipo_r == "Oportunidad":
         c1, c2 = st.columns(2)
-        with c1: modulo["viabilidad"] = st.selectbox("Viabilidad", OPORTUNIDAD_VIABILIDAD)
-        with c2: modulo["urgencia"] = st.selectbox("Urgencia", OPORTUNIDAD_URGENCIA)
-        modulo["brechas"] = st.multiselect("Brechas", OPORTUNIDAD_BRECHAS)
+        with c1: modulo["viabilidad"] = st.selectbox("Viabilidad", OPORTUNIDAD_VIABILIDAD, help="¿Qué tan factible es?")
+        with c2: modulo["urgencia"] = st.selectbox("Urgencia", OPORTUNIDAD_URGENCIA, help="¿Cuánto tiempo queda para actuar?")
+        modulo["brechas"] = st.multiselect("Brechas a superar", OPORTUNIDAD_BRECHAS, help="¿Qué obstáculos hay?")
 
     st.divider()
 
     # PASO 5
-    st.markdown('<div class="step-badge">5 — DIMENSIONES TRANSVERSALES</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="edu-box">{INTRO_DIMENSIONES}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sb">5 — DIMENSIONES TRANSVERSALES</div>', unsafe_allow_html=True)
+
+    with st.expander("📖 ¿Qué son las dimensiones transversales?"):
+        st.markdown(INTRO_DIMENSIONES)
+        st.markdown("""
+**¿Cómo responder?** Usa tu percepción y conocimiento del lugar. No se trata de
+datos exactos, sino de la evaluación cualitativa de quien conoce el territorio.
+Cada dimensión tiene una escala de 4 niveles (de peor a mejor) más la opción
+NS/NR (no sabe / no responde).
+
+**¿Para qué sirven?** Permiten construir un **radar territorial** que muestra
+fortalezas y debilidades de cada zona. Al agregar las respuestas de muchos
+participantes, emergen patrones que ningún registro individual podría revelar.
+""")
+
     d1, d2, d3 = st.columns(3)
     with d1:
-        dim_agua = st.selectbox("💧 Agua", DIM_AGUA)
-        dim_entorno = st.selectbox("🌿 Entorno", DIM_ENTORNO)
+        da = st.selectbox("💧 Disponibilidad de agua", DIM_AGUA, help="Percepción de la disponibilidad hídrica en la zona")
+        de = st.selectbox("🌿 Estado del entorno", DIM_ENTORNO, help="Condición del ecosistema natural circundante")
     with d2:
-        dim_social = st.selectbox("👥 Social", DIM_SOCIAL)
-        dim_gobernanza = st.selectbox("🏛️ Gobernanza", DIM_GOBERNANZA)
+        ds = st.selectbox("👥 Tejido social", DIM_SOCIAL, help="Fuerza de la organización comunitaria")
+        dg = st.selectbox("🏛️ Gobernanza", DIM_GOBERNANZA, help="Calidad de la gestión institucional")
     with d3:
-        dim_financ = st.selectbox("💰 Financiamiento", DIM_FINANCIAMIENTO)
-        dim_regen = st.selectbox("♻️ Regeneración", DIM_REGENERACION)
-    importancia = st.text_area("🎯 ¿Por qué es importante?", max_chars=MAX_IMPORTANCIA, height=80)
+        df = st.selectbox("💰 Financiamiento", DIM_FINANCIAMIENTO, help="Acceso a recursos económicos")
+        dr = st.selectbox("♻️ Regeneración", DIM_REGENERACION, help="Potencial de recuperación del territorio")
+    imp = st.text_area("🎯 ¿Por qué es importante este lugar?", max_chars=MAX_IMPORTANCIA, height=80)
 
     st.divider()
 
     # PASO 6
-    st.markdown('<div class="step-badge">6 — GUARDAR</div>', unsafe_allow_html=True)
-    if st.button("💾 Guardar Registro", use_container_width=True, type="primary"):
-        if not titulo or not descripcion:
-            st.error("Completa título y descripción.")
-            return
-        ci = st.session_state.cuenca_info or {"cuenca": "N/A", "subcuenca": "N/A", "subsubcuenca": "N/A"}
-        p = st.session_state.punto_seleccionado
-        with st.spinner("Guardando..."):
-            punto_id = create_punto(st.session_state.user, p["lat"], p["lon"], ci["cuenca"], ci["subcuenca"], ci["subsubcuenca"])
-            if punto_id:
-                obs_id = create_observacion(st.session_state.user, punto_id, tipo_registro, titulo, descripcion,
-                    {"agua": dim_agua, "entorno": dim_entorno, "social": dim_social,
-                     "gobernanza": dim_gobernanza, "financiamiento": dim_financ,
-                     "regeneracion": dim_regen, "importancia_lugar": importancia}, modulo)
-                if obs_id:
-                    st.success(f"✅ Registro guardado (ID: {obs_id})")
-                    st.balloons()
-                    st.session_state.punto_seleccionado = None
-                    st.session_state.cuenca_info = None
-
+    st.markdown('<div class="sb">6 — GUARDAR</div>', unsafe_allow_html=True)
+    if is_demo:
+        if st.button("💾 Vista previa (modo demo — no guarda)", use_container_width=True, type="primary"):
+            st.success("✅ ¡Formulario completado correctamente! En modo real, este registro se guardaría en la base de datos.")
+            st.info(f"**Resumen**: {tipo_r} — \"{titulo or '(sin título)'}\" en {st.session_state.cuenca_info.get('cuenca', 'N/A') if st.session_state.cuenca_info else 'N/A'}")
+            st.json({"tipo": tipo_r, "titulo": titulo, "modulo": modulo, "dimensiones": {"agua": da, "entorno": de, "social": ds, "gobernanza": dg, "financiamiento": df, "regeneracion": dr}})
+    else:
+        if st.button("💾 Guardar Registro", use_container_width=True, type="primary"):
+            if not titulo or not descripcion:
+                st.error("Completa título y descripción.")
+                return
+            ci = st.session_state.cuenca_info or {"cuenca": "N/A", "subcuenca": "N/A", "subsubcuenca": "N/A"}
+            p = st.session_state.punto_seleccionado
+            with st.spinner("Guardando..."):
+                pid = create_punto(st.session_state.user, p["lat"], p["lon"], ci["cuenca"], ci["subcuenca"], ci["subsubcuenca"])
+                if pid:
+                    oid = create_observacion(st.session_state.user, pid, tipo_r, titulo, descripcion,
+                        {"agua": da, "entorno": de, "social": ds, "gobernanza": dg, "financiamiento": df, "regeneracion": dr, "importancia_lugar": imp}, modulo)
+                    if oid:
+                        st.success(f"✅ Registro guardado (ID: {oid})")
+                        st.balloons()
+                        st.session_state.punto_seleccionado = None
+    footer()
 
 # ============================================
 # MAPA GLOBAL
 # ============================================
-def seccion_mapa_global():
-    render_hero("Visualiza todos los registros territoriales")
-    render_demo_banner()
+def seccion_mapa():
+    hero("Visualiza todos los registros territoriales")
+    demo_banner()
 
-    st.markdown("""
-    <div class="edu-box">
-        Cada marcador representa un registro: <strong style="color:#EF4444">rojo</strong> = conflicto,
-        <strong style="color:#22C55E">verde</strong> = iniciativa,
-        <strong style="color:#3B82F6">azul</strong> = actor,
-        <strong style="color:#F59E0B">naranja</strong> = oportunidad.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="edu">Cada marcador representa un registro: <strong style="color:#EF4444">rojo</strong>=conflicto, <strong style="color:#22C55E">verde</strong>=iniciativa, <strong style="color:#3B82F6">azul</strong>=actor, <strong style="color:#F59E0B">naranja</strong>=oportunidad.</div>', unsafe_allow_html=True)
+
+    with st.expander("📖 ¿Cómo interpretar el mapa?"):
+        st.markdown("""
+**Concentración de marcadores**: Muchos marcadores juntos indican zonas de alta actividad territorial.
+
+**Balance de colores**: Una zona con solo marcadores rojos (conflictos) sin verdes (iniciativas) sugiere
+que no hay respuesta organizada. Zonas con ambos colores muestran capacidad de reacción.
+
+**Distribución geográfica**: Los registros tienden a concentrarse en zonas habitadas de las cuencas.
+Las zonas sin marcadores pueden indicar falta de participantes, no ausencia de situaciones.
+""")
 
     stats = get_active_stats()
     if not stats or stats.get("total", 0) == 0:
-        st.info("No hay datos disponibles.")
-        return
+        st.info("Sin datos."); return
 
-    obs = stats["observaciones"]
-    puntos = stats["puntos"]
-    puntos_map = {p["id"]: p for p in puntos}
+    obs, puntos = stats["observaciones"], stats["puntos"]
+    pm = {p["id"]: p for p in puntos}
+    c1, c2 = st.columns(2)
+    with c1: ft = st.multiselect("Tipo", TIPOS_REGISTRO, default=TIPOS_REGISTRO)
+    with c2: fc = st.selectbox("Cuenca", ["Todas"] + stats.get("cuencas_list", []))
 
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        filtro_tipos = st.multiselect("Filtrar por tipo", TIPOS_REGISTRO, default=TIPOS_REGISTRO)
-    with col_f2:
-        filtro_cuenca = st.selectbox("Filtrar por cuenca", ["Todas"] + stats.get("cuencas_list", []))
-
-    filtered = []
-    for o in obs:
-        if o["tipo"] not in filtro_tipos:
-            continue
-        p = puntos_map.get(o["punto_id"])
-        if not p:
-            continue
-        if filtro_cuenca != "Todas" and p.get("cuenca") != filtro_cuenca:
-            continue
-        filtered.append((o, p))
-
-    st.caption(f"Mostrando **{len(filtered)}** registros")
+    filtered = [(o, pm[o["punto_id"]]) for o in obs if o["tipo"] in ft and o["punto_id"] in pm and (fc == "Todas" or pm[o["punto_id"]].get("cuenca") == fc)]
+    st.caption(f"**{len(filtered)}** registros")
 
     m = folium.Map(location=MAP_CENTER, zoom_start=MAP_ZOOM, tiles="CartoDB positron")
     for o, p in filtered:
-        tipo = o["tipo"]
-        popup_html = f"""
-        <div style="max-width:260px; font-family:sans-serif;">
-            <strong>{o['titulo']}</strong><br>
-            <span style="color:{COLORS[tipo]}; font-weight:600;">{EMOJIS[tipo]} {tipo}</span><br>
-            <small>{o.get('descripcion', '')[:150]}...</small><br>
-            <small style="color:#888;">📍 {p.get('cuenca', 'N/A')} → {p.get('subcuenca', '')}</small>
-        </div>"""
-        folium.Marker(
-            location=[p["lat"], p["lon"]],
-            popup=folium.Popup(popup_html, max_width=280),
-            icon=folium.Icon(color=FOLIUM_COLORS.get(tipo, "gray"), icon=FOLIUM_ICONS.get(tipo, "info-sign"), prefix="fa"),
-        ).add_to(m)
-
+        t = o["tipo"]
+        popup = f'<div style="max-width:260px;font-family:sans-serif"><strong>{o["titulo"]}</strong><br><span style="color:{COLORS[t]};font-weight:600">{EMOJIS[t]} {t}</span><br><small>{o.get("descripcion","")[:150]}...</small><br><small style="color:#888">📍 {p.get("cuenca","N/A")} → {p.get("subcuenca","")}</small></div>'
+        folium.Marker([p["lat"], p["lon"]], popup=folium.Popup(popup, max_width=280),
+                      icon=folium.Icon(color=FOLIUM_COLORS.get(t, "gray"), icon=FOLIUM_ICONS.get(t, "info-sign"), prefix="fa")).add_to(m)
     st_folium(m, width=None, height=550, returned_objects=[])
-    render_footer()
-
+    footer()
 
 # ============================================
 # DASHBOARD
 # ============================================
 def seccion_dashboard():
-    render_hero("Diagnóstico territorial colectivo")
-    render_demo_banner()
+    hero("Diagnóstico territorial colectivo")
+    demo_banner()
 
-    st.markdown("""
-    <div class="edu-box">
-        El dashboard agrega los registros de todos los participantes para mostrar una
-        <strong>radiografía del territorio</strong>. Las dimensiones transversales revelan
-        patrones: dónde falta agua, dónde la gobernanza es débil, dónde hay potencial
-        de regeneración.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="edu">El dashboard agrega los registros de todos los participantes para mostrar una <strong>radiografía del territorio</strong>. Las dimensiones revelan patrones: dónde falta agua, dónde la gobernanza es débil, dónde hay potencial de regeneración.</div>', unsafe_allow_html=True)
 
     stats = get_active_stats()
     if not stats or stats.get("total", 0) == 0:
-        st.info("Aún no hay registros.")
-        return
+        st.info("Sin registros."); return
 
-    by_tipo = stats.get("by_tipo", {})
-
-    # Métricas
+    bt = stats.get("by_tipo", {})
     cols = st.columns(5)
-    metrics = [
-        (stats['total'], "Total", "#1E293B"),
-        (by_tipo.get('Conflicto', 0), "Conflictos", COLORS["Conflicto"]),
-        (by_tipo.get('Iniciativa', 0), "Iniciativas", COLORS["Iniciativa"]),
-        (by_tipo.get('Actor', 0), "Actores", COLORS["Actor"]),
-        (by_tipo.get('Oportunidad', 0), "Oportunidades", COLORS["Oportunidad"]),
-    ]
-    for col, (num, label, color) in zip(cols, metrics):
-        col.markdown(f'<div class="metric-card"><div class="number" style="color:{color}">{num}</div><div class="label">{label}</div></div>', unsafe_allow_html=True)
+    for col, (n, l, c) in zip(cols, [(stats["total"], "Total", "#1E293B"),
+        (bt.get("Conflicto", 0), "Conflictos", COLORS["Conflicto"]),
+        (bt.get("Iniciativa", 0), "Iniciativas", COLORS["Iniciativa"]),
+        (bt.get("Actor", 0), "Actores", COLORS["Actor"]),
+        (bt.get("Oportunidad", 0), "Oportunidades", COLORS["Oportunidad"])]):
+        col.markdown(f'<div class="mc"><div class="n" style="color:{c}">{n}</div><div class="l">{l}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Charts row 1
-    col1, col2 = st.columns(2)
-    with col1:
+    # Row 1
+    c1, c2 = st.columns(2)
+    with c1:
         st.subheader("Distribución por tipo")
-        fig = px.pie(names=list(by_tipo.keys()), values=list(by_tipo.values()),
-                     color=list(by_tipo.keys()), color_discrete_map=COLORS, hole=0.45)
-        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=320,
-                         legend=dict(orientation="h", yanchor="bottom", y=-0.15))
+        with st.expander("📐 Metodología"):
+            st.markdown('<div class="meth">Gráfico de torta con hueco (donut chart). Cada segmento representa la proporción de registros por tipo. Un predominio de conflictos indica un territorio en tensión; un predominio de iniciativas sugiere capacidad de acción comunitaria.</div>', unsafe_allow_html=True)
+        fig = px.pie(names=list(bt.keys()), values=list(bt.values()), color=list(bt.keys()), color_discrete_map=COLORS, hole=0.45)
+        fig.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=320, legend=dict(orientation="h", yanchor="bottom", y=-0.15))
         fig.update_traces(textinfo="percent+label", textposition="outside")
         st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
+    with c2:
         st.subheader("Radar de dimensiones")
-        dims = stats.get("dimensiones", {})
-        score_map = {
-            "agua": {"Muy escasa": 1, "Escasa": 2, "Suficiente": 3, "Abundante": 4},
-            "entorno": {"Muy degradado": 1, "Degradado": 2, "En recuperación": 3, "Conservado": 4},
-            "social": {"Muy débil": 1, "Débil": 2, "Media": 3, "Fuerte": 4},
-            "gobernanza": {"Muy débil": 1, "Débil": 2, "Media": 3, "Fuerte": 4},
-            "financiamiento": {"Muy difícil": 1, "Difícil": 2, "Medio": 3, "Fácil": 4},
-            "regeneracion": {"Bajo": 1, "Medio": 2, "Alto": 3},
-        }
-        dim_labels = {"agua": "💧 Agua", "entorno": "🌿 Entorno", "social": "👥 Social",
-                     "gobernanza": "🏛️ Gobernanza", "financiamiento": "💰 Financ.", "regeneracion": "♻️ Regen."}
-        radar_vals, radar_labels = [], []
-        for d, label in dim_labels.items():
-            vals = dims.get(d, {})
-            smap = score_map.get(d, {})
-            total_s, total_c = 0, 0
-            for val, count in vals.items():
-                s = smap.get(val, 0)
-                if s > 0:
-                    total_s += s * count
-                    total_c += count
-            avg = (total_s / total_c) if total_c > 0 else 0
-            mx = max(smap.values()) if smap else 4
-            radar_vals.append(round((avg / mx) * 100, 1))
-            radar_labels.append(label)
+        with st.expander("📐 Metodología"):
+            st.markdown('<div class="meth"><strong>Construcción</strong>: Cada dimensión tiene una escala ordinal (1-4). Se calcula el promedio ponderado por frecuencia y se normaliza a 0-100%. El radar muestra el perfil multidimensional del territorio.<br><br><strong>Interpretación</strong>: Valores bajos (cerca del centro) = dimensiones críticas. Valores altos (cerca del borde) = fortalezas. Un radar "aplastado" en una dirección indica un desequilibrio sistémico. Lo ideal es un polígono expandido y equilibrado.</div>', unsafe_allow_html=True)
 
+        dims = stats.get("dimensiones", {})
+        rv, rl = [], []
+        for d, label in DIM_LABELS.items():
+            vals = dims.get(d, {})
+            sm = SCORE_MAP.get(d, {})
+            ts, tc = 0, 0
+            for val, cnt in vals.items():
+                s = sm.get(val, 0)
+                if s > 0: ts += s * cnt; tc += cnt
+            avg = (ts / tc) if tc > 0 else 0
+            mx = max(sm.values()) if sm else 4
+            rv.append(round((avg / mx) * 100, 1)); rl.append(label)
         fig = go.Figure()
-        fig.add_trace(go.Scatterpolar(r=radar_vals + [radar_vals[0]], theta=radar_labels + [radar_labels[0]],
-                                       fill="toself", fillcolor="rgba(37,99,235,0.15)", line=dict(color="#2563EB", width=2)))
-        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False)),
-                         margin=dict(t=30, b=30, l=60, r=60), height=320, showlegend=False)
+        fig.add_trace(go.Scatterpolar(r=rv + [rv[0]], theta=rl + [rl[0]], fill="toself", fillcolor="rgba(37,99,235,.15)", line=dict(color="#2563EB", width=2)))
+        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False)), margin=dict(t=30, b=30, l=60, r=60), height=320, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Charts row 2 — by cuenca
+    # Row 2 — stacked bar by cuenca
     st.divider()
-    st.subheader("Distribución por cuenca")
+    st.subheader("Registros por cuenca")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth">Gráfico de barras apiladas. Cada barra representa una cuenca; los segmentos de color representan los tipos de registro. Permite comparar la intensidad y composición de la actividad territorial entre cuencas.</div>', unsafe_allow_html=True)
 
-    puntos = stats["puntos"]
-    obs = stats["observaciones"]
-    puntos_map = {p["id"]: p for p in puntos}
-
-    cuenca_data = {}
+    obs, puntos = stats["observaciones"], stats["puntos"]
+    pm = {p["id"]: p for p in puntos}
+    cd = {}
     for o in obs:
-        p = puntos_map.get(o["punto_id"])
+        p = pm.get(o["punto_id"])
         if p:
             c = p.get("cuenca", "N/A")
-            if c and c != "N/A":
-                if c not in cuenca_data:
-                    cuenca_data[c] = {"Conflicto": 0, "Iniciativa": 0, "Actor": 0, "Oportunidad": 0}
-                cuenca_data[c][o["tipo"]] = cuenca_data[c].get(o["tipo"], 0) + 1
-
-    if cuenca_data:
-        rows = []
-        for cuenca, tipos in cuenca_data.items():
-            for tipo, count in tipos.items():
-                if count > 0:
-                    rows.append({"Cuenca": cuenca, "Tipo": tipo, "Cantidad": count})
-        df_bar = pd.DataFrame(rows)
-        fig = px.bar(df_bar, x="Cuenca", y="Cantidad", color="Tipo", color_discrete_map=COLORS,
-                     barmode="stack")
+            if c != "N/A":
+                cd.setdefault(c, {}).setdefault(o["tipo"], 0)
+                cd[c][o["tipo"]] += 1
+    if cd:
+        rows = [{"Cuenca": c, "Tipo": t, "Cantidad": n} for c, ts in cd.items() for t, n in ts.items() if n > 0]
+        fig = px.bar(pd.DataFrame(rows), x="Cuenca", y="Cantidad", color="Tipo", color_discrete_map=COLORS, barmode="stack")
         fig.update_layout(margin=dict(t=20, b=20), height=350, xaxis_tickangle=-30)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Dimensiones por cuenca (heatmap)
+    # Row 3 — heatmap
     st.divider()
-    st.subheader("Dimensiones por cuenca")
-    st.caption("Promedio normalizado (0-100) de cada dimensión por cuenca. Rojo = más crítico.")
+    st.subheader("Heatmap de dimensiones por cuenca")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth"><strong>Construcción</strong>: Para cada par (cuenca, dimensión), se promedian los scores numéricos de todos los registros y se normalizan a porcentaje (0-100%).<br><br><strong>Interpretación</strong>: Colores cálidos (rojo) = valores bajos/críticos. Colores fríos (verde) = valores altos/favorables. Columnas enteras en rojo revelan una dimensión débil en todo el territorio. Filas en rojo revelan cuencas en estado crítico integral.</div>', unsafe_allow_html=True)
 
-    cuenca_dims = {}
+    cdims = {}
     for o in obs:
-        p = puntos_map.get(o["punto_id"])
-        if not p:
-            continue
+        p = pm.get(o["punto_id"])
+        if not p: continue
         c = p.get("cuenca", "N/A")
-        if c == "N/A":
-            continue
-        if c not in cuenca_dims:
-            cuenca_dims[c] = {d: [] for d in score_map}
-        for d, smap in score_map.items():
-            val = o.get(f"dim_{d}", "NS/NR")
-            s = smap.get(val, 0)
-            if s > 0:
-                cuenca_dims[c][d].append(s)
-
-    if cuenca_dims:
-        heatmap_rows = []
-        for c, dims_data in cuenca_dims.items():
+        if c == "N/A": continue
+        cdims.setdefault(c, {d: [] for d in SCORE_MAP})
+        for d, sm in SCORE_MAP.items():
+            s = sm.get(o.get(f"dim_{d}", ""), 0)
+            if s > 0: cdims[c][d].append(s)
+    if cdims:
+        hrows = []
+        for c, dd in cdims.items():
             row = {"Cuenca": c}
-            for d, label in dim_labels.items():
-                vals = dims_data.get(d, [])
-                mx = max(score_map[d].values()) if score_map.get(d) else 4
-                avg = (sum(vals) / len(vals) / mx * 100) if vals else 0
-                row[label] = round(avg, 0)
-            heatmap_rows.append(row)
-        df_heat = pd.DataFrame(heatmap_rows).set_index("Cuenca")
-
-        fig = px.imshow(df_heat, aspect="auto",
-                        color_continuous_scale=["#EF4444", "#FCD34D", "#22C55E"],
-                        labels=dict(color="Score %"))
+            for d, lb in DIM_LABELS.items():
+                vs = dd.get(d, [])
+                mx = max(SCORE_MAP[d].values())
+                row[lb] = round((sum(vs) / len(vs) / mx * 100), 0) if vs else 0
+            hrows.append(row)
+        dh = pd.DataFrame(hrows).set_index("Cuenca")
+        fig = px.imshow(dh, aspect="auto", color_continuous_scale=["#EF4444", "#FCD34D", "#22C55E"], labels=dict(color="Score %"))
         fig.update_layout(margin=dict(t=20, b=20), height=300)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -694,309 +510,205 @@ def seccion_dashboard():
     st.divider()
     st.subheader("Actividad reciente")
     for o in obs[:12]:
-        tipo = o["tipo"]
-        fecha = o.get("created_at", "")[:10]
-        badge = f"tipo-{tipo.lower()}"
-        st.markdown(f"""
-        <div style="display:flex; align-items:center; gap:0.8rem; padding:0.5rem 0; border-bottom:1px solid #F1F5F9;">
-            <span class="tipo-badge {badge}">{EMOJIS[tipo]} {tipo}</span>
-            <span style="flex:1; font-size:0.9rem;"><strong>{o['titulo']}</strong></span>
-            <span style="color:#94A3B8; font-size:0.8rem;">{fecha}</span>
-        </div>""", unsafe_allow_html=True)
-
-    render_footer()
-
+        t = o["tipo"]
+        f = o.get("created_at", "")[:10]
+        st.markdown(f'<div style="display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid #F1F5F9"><span class="tb t{t[0].lower()}">{EMOJIS[t]} {t}</span><span style="flex:1;font-size:.9rem"><strong>{o["titulo"]}</strong></span><span style="color:#94A3B8;font-size:.8rem">{f}</span></div>', unsafe_allow_html=True)
+    footer()
 
 # ============================================
-# ANÁLISIS DE RED
+# RED
 # ============================================
-def seccion_analisis_red():
-    render_hero("Análisis de conexiones territoriales")
-    render_demo_banner()
+def seccion_red():
+    hero("Análisis de conexiones territoriales")
+    demo_banner()
 
-    st.markdown("""
-    <div class="edu-box">
-        <strong>¿Por qué analizar las conexiones?</strong> Los conflictos, iniciativas, actores y oportunidades
-        de un territorio no son independientes: un conflicto por agua puede estar vinculado a una iniciativa
-        de monitoreo, que a su vez involucra a un actor comunitario y abre una oportunidad de financiamiento.
-        Este análisis revela esas <strong>relaciones ocultas</strong> entre registros que comparten
-        ubicación, cuenca o actores.
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="edu"><strong>¿Por qué analizar las conexiones?</strong> Los conflictos, iniciativas, actores y oportunidades no son independientes: un conflicto puede estar vinculado a una iniciativa que involucra a un actor y abre una oportunidad. Este análisis revela <strong>relaciones ocultas</strong> entre registros.</div>', unsafe_allow_html=True)
 
     stats = get_active_stats()
     if not stats or stats.get("total", 0) < 5:
-        st.info("Se necesitan al menos 5 registros para el análisis de red.")
-        return
+        st.info("Se necesitan al menos 5 registros."); return
 
-    obs = stats["observaciones"]
-    puntos = stats["puntos"]
-    puntos_map = {p["id"]: p for p in puntos}
+    obs, puntos = stats["observaciones"], stats["puntos"]
+    pm = {p["id"]: p for p in puntos}
 
-    # ---- 1. MATRIZ DE CO-OCURRENCIA POR SUBCUENCA ----
+    # 1. Co-ocurrencia
     st.subheader("🗺️ Co-ocurrencia territorial")
-    st.caption("¿Qué tipos de registro aparecen juntos en las mismas subcuencas? Una alta co-ocurrencia de conflictos e iniciativas sugiere que la comunidad está respondiendo activamente.")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth"><strong>Construcción</strong>: Para cada subcuenca, se registra qué tipos de registro están presentes. La celda (i,j) de la matriz cuenta en cuántas subcuencas coexisten los tipos i y j.<br><br><strong>Interpretación</strong>: Una alta co-ocurrencia Conflicto-Iniciativa indica que las comunidades están respondiendo activamente a los problemas. Conflicto-Oportunidad alta sugiere que hay ventanas para intervenir donde hay tensión. Valores bajos en la diagonal indican pocos registros de ese tipo.</div>', unsafe_allow_html=True)
 
-    sub_tipos = {}
+    sub_t = {}
     for o in obs:
-        p = puntos_map.get(o["punto_id"])
-        if not p:
-            continue
-        sub = p.get("subcuenca", "N/A")
-        if sub == "N/A":
-            continue
-        if sub not in sub_tipos:
-            sub_tipos[sub] = []
-        sub_tipos[sub].append(o["tipo"])
-
-    # Construir matriz
-    tipos_list = ["Conflicto", "Iniciativa", "Actor", "Oportunidad"]
-    cooc = pd.DataFrame(0, index=tipos_list, columns=tipos_list)
-    for sub, tipos in sub_tipos.items():
-        for t1 in tipos_list:
-            for t2 in tipos_list:
-                if t1 in tipos and t2 in tipos:
-                    cooc.loc[t1, t2] += 1
-
-    fig = px.imshow(cooc, text_auto=True, color_continuous_scale=["#F8FAFC", "#2563EB"],
-                    labels=dict(color="Subcuencas"))
+        p = pm.get(o["punto_id"])
+        if not p: continue
+        s = p.get("subcuenca", "N/A")
+        if s != "N/A": sub_t.setdefault(s, []).append(o["tipo"])
+    tl = ["Conflicto", "Iniciativa", "Actor", "Oportunidad"]
+    cooc = pd.DataFrame(0, index=tl, columns=tl)
+    for ts in sub_t.values():
+        for t1 in tl:
+            for t2 in tl:
+                if t1 in ts and t2 in ts: cooc.loc[t1, t2] += 1
+    fig = px.imshow(cooc, text_auto=True, color_continuous_scale=["#F8FAFC", "#2563EB"], labels=dict(color="Subcuencas"))
     fig.update_layout(margin=dict(t=20, b=20), height=350)
     st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
-    # ---- 2. ACTORES Y SUS CONEXIONES ----
+    # 2. Actores
     st.subheader("👥 Red de actores")
-    st.caption("Actores mencionados en conflictos e iniciativas. El tamaño indica frecuencia de mención. Actores que aparecen en múltiples subcuencas son nodos articuladores del territorio.")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth"><strong>Construcción</strong>: Se extraen nombres de actores de los campos actor_nombre y conflicto_actores_involucrados. Se cuentan menciones y subcuencas donde aparecen.<br><br><strong>Interpretación</strong>: Actores grandes y altos = muy mencionados. Actores a la derecha = presentes en muchas subcuencas (articuladores). "Multi-cuenca" (rojo) = actores que trascienden una sola cuenca — son nodos clave de la red territorial.</div>', unsafe_allow_html=True)
 
-    actor_mentions = {}
+    am = {}
     for o in obs:
-        p = puntos_map.get(o["punto_id"])
+        p = pm.get(o["punto_id"])
         sub = p.get("subcuenca", "N/A") if p else "N/A"
-
         names = []
-        if o.get("actor_nombre"):
-            names.append(o["actor_nombre"])
+        if o.get("actor_nombre"): names.append(o["actor_nombre"])
         if o.get("conflicto_actores_involucrados"):
-            # Extraer nombres de la cadena "X vs Y"
-            parts = o["conflicto_actores_involucrados"].replace(" vs ", "|").replace(" y ", "|").split("|")
-            names.extend([p.strip() for p in parts if p.strip()])
-
-        for name in names:
-            if name not in actor_mentions:
-                actor_mentions[name] = {"count": 0, "subcuencas": set(), "tipos": set(), "cuencas": set()}
-            actor_mentions[name]["count"] += 1
-            actor_mentions[name]["subcuencas"].add(sub)
-            actor_mentions[name]["tipos"].add(o["tipo"])
-            if p:
-                actor_mentions[name]["cuencas"].add(p.get("cuenca", "N/A"))
-
-    if actor_mentions:
-        actor_rows = []
-        for name, data in sorted(actor_mentions.items(), key=lambda x: -x[1]["count"]):
-            actor_rows.append({
-                "Actor": name,
-                "Menciones": data["count"],
-                "Subcuencas": len(data["subcuencas"]),
-                "Cuencas": ", ".join(sorted(data["cuencas"])),
-                "Tipos vinculados": ", ".join(sorted(data["tipos"])),
-                "Alcance": "🔴 Multi-cuenca" if len(data["cuencas"]) > 1 else "🟢 Local",
-            })
-        df_actors = pd.DataFrame(actor_rows)
-
-        # Bubble chart
-        fig = px.scatter(df_actors, x="Subcuencas", y="Menciones", size="Menciones",
-                        color="Alcance", text="Actor",
+            names.extend([x.strip() for x in o["conflicto_actores_involucrados"].replace(" vs ", "|").replace(" y ", "|").split("|") if x.strip()])
+        for n in names:
+            am.setdefault(n, {"count": 0, "subs": set(), "tipos": set(), "cuencas": set()})
+            am[n]["count"] += 1; am[n]["subs"].add(sub); am[n]["tipos"].add(o["tipo"])
+            if p: am[n]["cuencas"].add(p.get("cuenca", "N/A"))
+    if am:
+        ar = [{"Actor": n, "Menciones": d["count"], "Subcuencas": len(d["subs"]),
+               "Cuencas": ", ".join(sorted(d["cuencas"])), "Tipos": ", ".join(sorted(d["tipos"])),
+               "Alcance": "🔴 Multi-cuenca" if len(d["cuencas"]) > 1 else "🟢 Local"}
+              for n, d in sorted(am.items(), key=lambda x: -x[1]["count"])]
+        df = pd.DataFrame(ar)
+        fig = px.scatter(df, x="Subcuencas", y="Menciones", size="Menciones", color="Alcance", text="Actor",
                         color_discrete_map={"🔴 Multi-cuenca": "#EF4444", "🟢 Local": "#22C55E"})
-        fig.update_traces(textposition="top center", textfont_size=10)
-        fig.update_layout(margin=dict(t=20, b=20), height=400, showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-
-        with st.expander("📋 Tabla completa de actores"):
-            st.dataframe(df_actors, use_container_width=True, hide_index=True)
-
-    st.divider()
-
-    # ---- 3. CONFLICTO ↔ RESPUESTA ----
-    st.subheader("⚡ Mapa conflicto → respuesta")
-    st.caption("¿Las subcuencas con más conflictos también tienen más iniciativas? Un ratio alto de iniciativas/conflictos indica capacidad de respuesta comunitaria.")
-
-    sub_balance = {}
-    for o in obs:
-        p = puntos_map.get(o["punto_id"])
-        if not p:
-            continue
-        sub = p.get("subcuenca", "N/A")
-        if sub == "N/A":
-            continue
-        if sub not in sub_balance:
-            sub_balance[sub] = {"Conflicto": 0, "Iniciativa": 0, "Oportunidad": 0, "Actor": 0,
-                                "cuenca": p.get("cuenca", "")}
-        sub_balance[sub][o["tipo"]] += 1
-
-    if sub_balance:
-        balance_rows = []
-        for sub, data in sub_balance.items():
-            conf = data["Conflicto"]
-            ini = data["Iniciativa"]
-            ratio = round(ini / conf, 2) if conf > 0 else (999 if ini > 0 else 0)
-            balance_rows.append({
-                "Subcuenca": sub,
-                "Cuenca": data["cuenca"],
-                "Conflictos": conf,
-                "Iniciativas": ini,
-                "Oportunidades": data["Oportunidad"],
-                "Ratio I/C": ratio,
-                "Estado": "✅ Respuesta activa" if ratio >= 1 else ("⚠️ Brecha" if ratio > 0 else "🔴 Sin respuesta"),
-            })
-        df_balance = pd.DataFrame(balance_rows).sort_values("Conflictos", ascending=False)
-
-        fig = px.scatter(df_balance, x="Conflictos", y="Iniciativas", size="Oportunidades",
-                        color="Estado", hover_name="Subcuenca",
-                        color_discrete_map={"✅ Respuesta activa": "#22C55E", "⚠️ Brecha": "#F59E0B", "🔴 Sin respuesta": "#EF4444"})
-        # Línea de equilibrio
-        max_val = max(df_balance["Conflictos"].max(), df_balance["Iniciativas"].max(), 1)
-        fig.add_trace(go.Scatter(x=[0, max_val], y=[0, max_val], mode="lines",
-                                 line=dict(dash="dash", color="#94A3B8"), name="Equilibrio 1:1", showlegend=True))
+        fig.update_traces(textposition="top center", textfont_size=9)
         fig.update_layout(margin=dict(t=20, b=20), height=400)
         st.plotly_chart(fig, use_container_width=True)
-
-        with st.expander("📋 Tabla de balance por subcuenca"):
-            st.dataframe(df_balance, use_container_width=True, hide_index=True)
+        with st.expander("📋 Tabla de actores"):
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
     st.divider()
 
-    # ---- 4. BRECHAS Y OPORTUNIDADES ----
-    st.subheader("🎯 Mapa de brechas")
-    st.caption("Las brechas más mencionadas en las oportunidades señalan dónde hay que concentrar esfuerzos.")
+    # 3. Conflicto → Respuesta
+    st.subheader("⚡ Balance conflicto → respuesta")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth"><strong>Construcción</strong>: Para cada subcuenca se cuenta el número de conflictos (C) e iniciativas (I). El ratio I/C mide la capacidad de respuesta.<br><br><strong>Interpretación</strong>: Puntos sobre la línea diagonal (ratio>1) = respuesta activa. Puntos bajo la diagonal = brecha de respuesta. Puntos en el eje X con Y=0 = conflictos sin ninguna iniciativa. El tamaño del punto refleja las oportunidades detectadas.</div>', unsafe_allow_html=True)
 
-    brechas_count = {}
+    sb = {}
+    for o in obs:
+        p = pm.get(o["punto_id"])
+        if not p: continue
+        s = p.get("subcuenca", "N/A")
+        if s == "N/A": continue
+        sb.setdefault(s, {"Conflicto": 0, "Iniciativa": 0, "Oportunidad": 0, "cuenca": p.get("cuenca", "")})
+        sb[s][o["tipo"]] = sb[s].get(o["tipo"], 0) + 1
+    if sb:
+        br = [{"Subcuenca": s, "Cuenca": d["cuenca"], "Conflictos": d["Conflicto"], "Iniciativas": d["Iniciativa"],
+               "Oportunidades": max(d["Oportunidad"], 1),
+               "Ratio": round(d["Iniciativa"] / d["Conflicto"], 2) if d["Conflicto"] > 0 else (9 if d["Iniciativa"] > 0 else 0),
+               "Estado": "✅ Activa" if (d["Iniciativa"] / d["Conflicto"] if d["Conflicto"] > 0 else 9) >= 1 else ("⚠️ Brecha" if d["Iniciativa"] > 0 else "🔴 Sin respuesta")}
+              for s, d in sb.items()]
+        dfb = pd.DataFrame(br).sort_values("Conflictos", ascending=False)
+        fig = px.scatter(dfb, x="Conflictos", y="Iniciativas", size="Oportunidades", color="Estado", hover_name="Subcuenca",
+                        color_discrete_map={"✅ Activa": "#22C55E", "⚠️ Brecha": "#F59E0B", "🔴 Sin respuesta": "#EF4444"})
+        mx = max(dfb["Conflictos"].max(), dfb["Iniciativas"].max(), 1)
+        fig.add_trace(go.Scatter(x=[0, mx], y=[0, mx], mode="lines", line=dict(dash="dash", color="#94A3B8"), name="Equilibrio 1:1"))
+        fig.update_layout(margin=dict(t=20, b=20), height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        with st.expander("📋 Tabla de balance"):
+            st.dataframe(dfb, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # 4. Brechas
+    st.subheader("🎯 Brechas prioritarias")
+    with st.expander("📐 Metodología"):
+        st.markdown('<div class="meth"><strong>Construcción</strong>: Se cuentan las menciones de cada tipo de brecha en los registros de oportunidades. Cada oportunidad puede mencionar múltiples brechas.<br><br><strong>Interpretación</strong>: Las brechas más frecuentes son los cuellos de botella del territorio. Si "Financiamiento" lidera, falta dinero. Si "Coordinación" lidera, hay actores pero no trabajan juntos. Esto orienta las prioridades de acción.</div>', unsafe_allow_html=True)
+
+    bc = {}
     for o in obs:
         if o["tipo"] == "Oportunidad":
-            brechas = o.get("oportunidad_brechas", [])
-            if isinstance(brechas, list):
-                for b in brechas:
-                    brechas_count[b] = brechas_count.get(b, 0) + 1
-
-    if brechas_count:
-        df_brechas = pd.DataFrame([
-            {"Brecha": k, "Menciones": v}
-            for k, v in sorted(brechas_count.items(), key=lambda x: -x[1])
-        ])
-        fig = px.bar(df_brechas, x="Menciones", y="Brecha", orientation="h",
-                     color="Menciones", color_continuous_scale=["#FDE68A", "#EF4444"])
+            for b in (o.get("oportunidad_brechas") or []):
+                bc[b] = bc.get(b, 0) + 1
+    if bc:
+        dfbr = pd.DataFrame([{"Brecha": k, "Menciones": v} for k, v in sorted(bc.items(), key=lambda x: -x[1])])
+        fig = px.bar(dfbr, x="Menciones", y="Brecha", orientation="h", color="Menciones", color_continuous_scale=["#FDE68A", "#EF4444"])
         fig.update_layout(margin=dict(t=20, b=20, l=10), height=300, showlegend=False, yaxis=dict(autorange="reversed"))
         st.plotly_chart(fig, use_container_width=True)
-
-    render_footer()
-
+    footer()
 
 # ============================================
 # MIS REGISTROS
 # ============================================
-def seccion_mis_registros():
-    render_hero("Tus aportes al mapa territorial")
+def seccion_registros():
+    hero("Tus aportes al mapa territorial")
     if st.session_state.demo_mode:
-        st.info("En modo demo no hay registros personales.")
-        return
-
-    mis_obs = get_observaciones_by_user(st.session_state.user)
-    if not mis_obs:
-        st.info("No has creado registros aún. Ve a **Nuevo Registro**.")
-        return
-
-    st.write(f"Has contribuido con **{len(mis_obs)}** registros.")
-    for obs_item in mis_obs:
-        tipo = obs_item["tipo"]
-        fecha = obs_item.get("created_at", "")[:10]
-        with st.expander(f"{EMOJIS[tipo]} **{obs_item['titulo']}** — {tipo} · {fecha}"):
-            st.write(obs_item.get("descripcion", ""))
-            dims_display = {"💧": obs_item.get("dim_agua"), "🌿": obs_item.get("dim_entorno"),
-                           "👥": obs_item.get("dim_social"), "🏛️": obs_item.get("dim_gobernanza"),
-                           "💰": obs_item.get("dim_financiamiento"), "♻️": obs_item.get("dim_regeneracion")}
-            cols = st.columns(6)
-            for col, (emoji, val) in zip(cols, dims_display.items()):
-                col.caption(emoji)
-                col.write(val or "NS/NR")
-            if st.button(f"🗑️ Eliminar", key=f"del_{obs_item['id']}"):
-                if delete_observacion(obs_item["id"], st.session_state.user):
-                    st.success("Eliminado")
-                    st.rerun()
-
-    render_footer()
-
+        st.info("En modo demo los registros son ficticios compartidos. Crea una cuenta para tener registros propios.")
+        footer(); return
+    mis = get_observaciones_by_user(st.session_state.user)
+    if not mis:
+        st.info("No has creado registros. Ve a **Nuevo Registro**."); footer(); return
+    st.write(f"**{len(mis)}** registros.")
+    for o in mis:
+        t = o["tipo"]; f = o.get("created_at", "")[:10]
+        with st.expander(f"{EMOJIS[t]} **{o['titulo']}** — {t} · {f}"):
+            st.write(o.get("descripcion", ""))
+            cs = st.columns(6)
+            for col, (e, k) in zip(cs, [("💧", "dim_agua"), ("🌿", "dim_entorno"), ("👥", "dim_social"),
+                                         ("🏛️", "dim_gobernanza"), ("💰", "dim_financiamiento"), ("♻️", "dim_regeneracion")]):
+                col.caption(e); col.write(o.get(k, "NS/NR"))
+            if st.button("🗑️ Eliminar", key=f"d_{o['id']}"):
+                if delete_observacion(o["id"], st.session_state.user): st.success("Eliminado"); st.rerun()
+    footer()
 
 # ============================================
 # PERFIL
 # ============================================
 def seccion_perfil():
-    render_hero("Tu información de participante")
+    hero("Tu información")
     if st.session_state.demo_mode:
-        st.info("Perfil no editable en modo demo.")
-        return
-    profile = st.session_state.profile
-    with st.form("profile_form"):
-        nombre = st.text_input("Nombre", value=profile.get("nombre", ""))
-        st.text_input("Email", value=profile.get("email", ""), disabled=True)
-        organizacion = st.text_input("Organización", value=profile.get("organizacion", "") or "")
-        tipo_actor = st.selectbox("Tipo de actor", TIPOS_ACTOR,
-                                  index=TIPOS_ACTOR.index(profile["tipo_actor"]) if profile.get("tipo_actor") in TIPOS_ACTOR else 0)
+        st.info("Perfil no editable en modo demo."); footer(); return
+    pr = st.session_state.profile
+    with st.form("pf"):
+        n = st.text_input("Nombre", value=pr.get("nombre", ""))
+        st.text_input("Email", value=pr.get("email", ""), disabled=True)
+        org = st.text_input("Organización", value=pr.get("organizacion", "") or "")
+        ta = st.selectbox("Tipo", TIPOS_ACTOR, index=TIPOS_ACTOR.index(pr["tipo_actor"]) if pr.get("tipo_actor") in TIPOS_ACTOR else 0)
         if st.form_submit_button("💾 Guardar", use_container_width=True):
-            if update_user_profile(st.session_state.user, {"nombre": nombre, "organizacion": organizacion, "tipo_actor": tipo_actor}):
-                st.session_state.profile.update({"nombre": nombre, "organizacion": organizacion, "tipo_actor": tipo_actor})
+            if update_user_profile(st.session_state.user, {"nombre": n, "organizacion": org, "tipo_actor": ta}):
+                st.session_state.profile.update({"nombre": n, "organizacion": org, "tipo_actor": ta})
                 st.success("✅ Actualizado")
-
-    render_footer()
-
+    footer()
 
 # ============================================
 # MAIN
 # ============================================
 def main():
+    # Sin credenciales → ofrecer demo
     if not SUPABASE_URL or not SUPABASE_KEY:
-        render_hero("Error de configuración")
-        st.error("**No se encontraron las credenciales de Supabase.** Configura los secrets.")
-        st.markdown("---")
-        st.markdown("#### 🧪 ¿Solo quieres explorar?")
-        if st.button("Entrar en modo demostración", type="primary"):
+        hero("Configuración pendiente")
+        st.warning("Credenciales de Supabase no configuradas.")
+        if st.button("🧪 Explorar en modo demostración", type="primary"):
             st.session_state.demo_mode = True
             st.session_state.user = "demo"
-            st.session_state.profile = {"nombre": "Usuario Demo", "tipo_actor": "Sociedad Civil", "organizacion": "Explorador/a", "email": "demo@demo.cl"}
+            st.session_state.profile = {"nombre": "Explorador/a Demo", "tipo_actor": "Sociedad Civil", "organizacion": "", "email": "demo@demo.cl"}
             st.rerun()
-        render_footer()
-        return
-
-    conn_ok = test_connection()
+        footer(); return
 
     if not st.session_state.user:
-        if not conn_ok:
-            render_hero("Sin conexión a Supabase")
-            st.warning("No se pudo conectar a la base de datos. Puedes explorar con datos de demostración.")
-            if st.button("Entrar en modo demostración", type="primary"):
+        conn = test_connection()
+        if not conn:
+            hero("Sin conexión")
+            st.warning("No se pudo conectar a Supabase.")
+            if st.button("🧪 Explorar con datos de demostración", type="primary"):
                 st.session_state.demo_mode = True
                 st.session_state.user = "demo"
-                st.session_state.profile = {"nombre": "Usuario Demo", "tipo_actor": "Sociedad Civil", "organizacion": "Explorador/a", "email": "demo@demo.cl"}
+                st.session_state.profile = {"nombre": "Explorador/a Demo", "tipo_actor": "Sociedad Civil", "organizacion": "", "email": "demo@demo.cl"}
                 st.rerun()
-            render_footer()
-            return
-        pantalla_auth()
-        return
+            footer(); return
+        pantalla_auth(); return
 
-    seccion = render_sidebar()
-
-    if seccion == "📝 Nuevo Registro":
-        seccion_nuevo_registro()
-    elif seccion == "🗺️ Mapa Global":
-        seccion_mapa_global()
-    elif seccion == "📊 Dashboard":
-        seccion_dashboard()
-    elif seccion == "🔗 Análisis de Red":
-        seccion_analisis_red()
-    elif seccion == "📋 Mis Registros":
-        seccion_mis_registros()
-    elif seccion == "⚙️ Perfil":
-        seccion_perfil()
-
+    sec = render_sidebar()
+    {"📝 Nuevo Registro": seccion_registro, "🗺️ Mapa Global": seccion_mapa, "📊 Dashboard": seccion_dashboard,
+     "🔗 Análisis de Red": seccion_red, "📋 Mis Registros": seccion_registros, "⚙️ Perfil": seccion_perfil}.get(sec, seccion_registro)()
 
 if __name__ == "__main__":
     main()
