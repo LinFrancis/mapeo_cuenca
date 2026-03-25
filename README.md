@@ -1,46 +1,46 @@
-# 🌊 Inteligencia Territorial
+# 🌊 Mapeo Participativo de Cuencas v2.0
 
-Plataforma de **mapeo territorial participativo** para cuencas hidrográficas de Chile.
+Herramienta de **inteligencia territorial** para cuencas hidrográficas de Chile. Las cuencas se definen según la [Dirección General de Aguas (DGA)](https://dga.mop.gob.cl/administracionrecursoshidricos/mapoteca/Paginas/default.aspx).
 
-## Características
+## Novedades v2.0
 
-- **Mapeo participativo** con detección automática de cuenca/subcuenca
-- **4 tipos de registro**: Conflicto, Iniciativa, Actor, Oportunidad
-- **6 dimensiones transversales**: Agua, entorno, social, gobernanza, financiamiento, regeneración
-- **Dashboard analítico**: Radar, heatmap por cuenca, gráficos de distribución
-- **Análisis de red**: Co-ocurrencia, red de actores, balance conflicto→respuesta, brechas
-- **Modo demostración**: 100 registros ficticios (50% cuenca del Maipo) para explorar sin cuenta
-- **Contenido educativo**: Explicaciones de cada módulo, metodología de indicadores
+- **🔍 Explorador de registros** — Buscador con filtros cascada: cuenca → subcuenca → subsubcuenca
+- **📍 Tres métodos de ubicación** — Clic en mapa, buscar por comuna, o coordenadas exactas
+- **🗺️ Mapas coropléticos** — Cuencas pintadas por densidad de registros (3 niveles)
+- **🌡️ Datos meteorológicos** — Temperatura y precipitación del último año (Open-Meteo, gratis)
+- **🔗 Enlaces multimedia** — YouTube, fotos, documentos, perfiles de actores
+- **📐 Metodología** — Cada gráfico tiene un expander explicando construcción e interpretación
+- **🧪 Demo completo** — 100 registros ficticios con formulario navegable
 
-## Deploy rápido
+## Deploy
 
 ### 1. Supabase
-- Crea proyecto en [supabase.com](https://supabase.com)
-- Ejecuta `SCHEMA_SUPABASE_COMPLETO.sql` en SQL Editor
-- **Ejecuta `FIX_SIGNUP.sql`** en SQL Editor (crea trigger para signup automático)
-- En Authentication → Settings → Email: desactiva "Confirm email" (para desarrollo)
+```
+1. Crear proyecto en supabase.com
+2. SQL Editor → ejecutar SCHEMA_SUPABASE_COMPLETO.sql
+3. SQL Editor → ejecutar MIGRATION_V2.sql
+4. Authentication → Settings → Email → desactivar "Confirm email"
+```
 
 ### 2. Streamlit Cloud
-- Sube repo a GitHub
-- En App Settings → Secrets:
-```toml
-[supabase]
-url = "https://TU-PROYECTO.supabase.co"
-key = "sb_publishable_TU_KEY"
+```
+1. Subir repo a GitHub
+2. App Settings → Secrets:
+   [supabase]
+   url = "https://TU-PROYECTO.supabase.co"
+   key = "sb_publishable_TU_KEY"
+3. Deploy
 ```
 
 ## Archivos
-
 | Archivo | Descripción |
 |---|---|
-| `app.py` | Aplicación principal |
-| `config.py` | Configuración, catálogos, textos educativos |
-| `supabase_client.py` | Cliente Supabase (auth con trigger, CRUD) |
-| `geo_utils.py` | Detección de cuenca con shapefiles |
-| `demo_data.py` | Generador de 100 casos ficticios |
-| `FIX_SIGNUP.sql` | **Ejecutar en Supabase** — trigger + policies |
-| `packages.txt` | Deps del sistema para Streamlit Cloud |
+| `app.py` | App principal v2.0 |
+| `config.py` | Config, catálogos, comunas→cuencas, textos |
+| `supabase_client.py` | Cliente DB (signup via trigger) |
+| `geo_utils.py` | Cuencas, coropléticos, weather |
+| `demo_data.py` | 100 casos con enlaces y comunas |
+| `MIGRATION_V2.sql` | **Ejecutar en Supabase** |
 
 ---
-
 [livlin.cl](https://livlin.cl) — servicios profesionales para una vida regenerativa
