@@ -538,7 +538,16 @@ def sec_dashboard():
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("Distribución por tipo")
-        with st.expander("📐 Metodología"): st.markdown('<div class="meth">Proporción de cada tipo. Predominio de conflictos = territorio en tensión. Predominio de iniciativas = capacidad de acción.</div>', unsafe_allow_html=True)
+        with st.expander("📐 Metodología: Distribución por tipo"):
+            st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> La proporción de cada tipo de registro (conflicto, iniciativa, actor, oportunidad) sobre el total de registros del territorio.<br><br>
+<strong>¿Cómo se construye?</strong> Se cuenta el número de registros por tipo y se calcula el porcentaje sobre el total. El gráfico tipo "donut" (torta con hueco) permite comparar visualmente las proporciones.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Predominio de conflictos (rojo > 40%)</strong>: El territorio está en tensión. Las comunidades reportan más problemas que soluciones.<br>
+• <strong>Predominio de iniciativas (verde > 40%)</strong>: Hay capacidad de acción comunitaria. Las respuestas organizadas superan a los problemas reportados.<br>
+• <strong>Distribución equilibrada</strong>: Señal saludable — el territorio tiene problemas identificados pero también respuestas activas, actores mapeados y oportunidades detectadas.<br>
+• <strong>Pocos actores mapeados (azul < 10%)</strong>: Puede indicar que falta mapear la red de actores del territorio, lo que dificulta la coordinación.
+</div>""", unsafe_allow_html=True)
         fig = px.pie(names=list(bt.keys()), values=list(bt.values()), color=list(bt.keys()), color_discrete_map=COLORS, hole=0.45)
         fig.update_layout(margin=dict(t=20, b=20), height=320, legend=dict(orientation="h", y=-0.15))
         fig.update_traces(textinfo="percent+label", textposition="outside")
@@ -546,7 +555,18 @@ def sec_dashboard():
 
     with c2:
         st.subheader("Radar de dimensiones")
-        with st.expander("📐 Metodología"): st.markdown('<div class="meth">Promedio ponderado de cada dimensión normalizado a 0-100%. Cerca del centro = crítico. Cerca del borde = favorable. Radar aplastado = desequilibrio sistémico.</div>', unsafe_allow_html=True)
+        with st.expander("📐 Metodología: Radar de dimensiones"):
+            st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> El perfil multidimensional del territorio en 6 ejes: agua, entorno, tejido social, gobernanza, financiamiento y potencial de regeneración.<br><br>
+<strong>¿Cómo se construye?</strong> Cada dimensión tiene una escala ordinal (ej: Muy escasa=1, Escasa=2, Suficiente=3, Abundante=4). Se calcula el promedio ponderado de todas las respuestas y se normaliza a 0-100%, donde 100% es el valor máximo posible.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Valores cerca del centro (< 30%)</strong>: Dimensiones críticas que requieren atención urgente.<br>
+• <strong>Valores cerca del borde (> 70%)</strong>: Fortalezas del territorio sobre las que se puede construir.<br>
+• <strong>Radar "aplastado" en una dirección</strong>: Desequilibrio sistémico. Ej: buena gobernanza pero sin financiamiento indica que hay voluntad institucional pero faltan recursos.<br>
+• <strong>Radar uniformemente bajo</strong>: Territorio en crisis integral — se necesita intervención en múltiples frentes simultáneamente.<br>
+• <strong>Radar uniformemente alto</strong>: Territorio resiliente con buenas condiciones para proyectos ambiciosos.<br><br>
+<strong>Limitación</strong>: Los valores reflejan la percepción agregada de los participantes, no mediciones técnicas. La representatividad depende de la diversidad de actores que participan.
+</div>""", unsafe_allow_html=True)
         dims = s.get("dimensiones", {}); rv, rl = [], []
         for d, lb in DIM_LABELS.items():
             vs = dims.get(d, {}); sm = SCORE_MAP.get(d, {}); ts, tc = 0, 0
@@ -562,7 +582,17 @@ def sec_dashboard():
 
     # By cuenca stacked bar
     st.divider(); st.subheader("Registros por cuenca")
-    with st.expander("📐 Metodología"): st.markdown('<div class="meth">Barras apiladas por cuenca. Segmentos = tipos. Compara intensidad y composición entre cuencas.</div>', unsafe_allow_html=True)
+    with st.expander("📐 Metodología: Registros por cuenca"):
+        st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> La cantidad y composición de registros en cada cuenca hidrográfica, desglosados por tipo.<br><br>
+<strong>¿Cómo se construye?</strong> Se agrupa cada registro por la cuenca donde fue ubicado geográficamente (según la delimitación de la DGA). Los segmentos de color dentro de cada barra representan los tipos de registro.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Barras altas</strong>: Cuencas con mayor actividad de mapeo participativo (más personas reportando).<br>
+• <strong>Barras predominantemente rojas</strong>: Cuencas en conflicto donde se necesitan más iniciativas de respuesta.<br>
+• <strong>Barras con variedad de colores</strong>: Cuencas con ecosistemas de gobernanza más desarrollados.<br>
+• <strong>Cuencas sin barra</strong>: No significa que no hay problemas — puede indicar falta de participantes en esa zona.<br><br>
+<strong>Nota</strong>: La altura de la barra refleja la participación, no necesariamente la gravedad. Una cuenca con 3 conflictos críticos puede ser más urgente que una con 20 registros de bajo impacto.
+</div>""", unsafe_allow_html=True)
     obs, pts = s["observaciones"], s["puntos"]; pm = {p["id"]: p for p in pts}
     cd = {}
     for o in obs:
@@ -576,7 +606,17 @@ def sec_dashboard():
 
     # Heatmap dimensions by cuenca
     st.divider(); st.subheader("Dimensiones por cuenca")
-    with st.expander("📐 Metodología"): st.markdown('<div class="meth">Score promedio normalizado. Rojo = crítico. Verde = favorable. Columnas rojas = dimensión débil en todo el territorio.</div>', unsafe_allow_html=True)
+    with st.expander("📐 Metodología: Heatmap de dimensiones"):
+        st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> Una matriz de calor que cruza cuencas (filas) con dimensiones transversales (columnas). Cada celda muestra el score promedio normalizado (0-100%) de esa dimensión en esa cuenca.<br><br>
+<strong>¿Cómo se construye?</strong> Para cada par cuenca-dimensión, se toman todos los registros ubicados en esa cuenca, se convierten sus respuestas a valores numéricos (ej: "Muy escasa"=1, "Abundante"=4), se promedian y se normalizan al rango 0-100%.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Celdas rojas (< 40%)</strong>: Dimensión en estado crítico en esa cuenca. Requiere atención prioritaria.<br>
+• <strong>Celdas verdes (> 60%)</strong>: Dimensión en buen estado. Es una fortaleza territorial.<br>
+• <strong>Columna entera en rojo</strong>: Una dimensión es débil en TODAS las cuencas — problema estructural del territorio que trasciende cuencas individuales.<br>
+• <strong>Fila entera en rojo</strong>: Una cuenca está en estado crítico integral — todas sus dimensiones son deficientes.<br>
+• <strong>Patrón diagonal</strong>: Las dimensiones no son independientes. Si agua y entorno están ambas en rojo, probablemente hay un problema de degradación ecosistémica que afecta ambas.
+</div>""", unsafe_allow_html=True)
     cdims = {}
     for o in obs:
         p = pm.get(o["punto_id"])
@@ -610,7 +650,17 @@ def sec_red():
 
     # Co-ocurrencia
     st.subheader("🗺️ Co-ocurrencia por subsubcuenca")
-    with st.expander("📐 Metodología"): st.markdown('<div class="meth">Celda (i,j) = en cuántas subsubcuencas coexisten los tipos i y j. Alta co-ocurrencia Conflicto-Iniciativa = respuesta comunitaria activa.</div>', unsafe_allow_html=True)
+    with st.expander("📐 Metodología: Matriz de co-ocurrencia"):
+        st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> En cuántas unidades territoriales (subsubcuencas) coexisten distintos tipos de registro. Revela patrones de asociación territorial.<br><br>
+<strong>¿Cómo se construye?</strong> Para cada subsubcuenca, se verifica qué tipos de registro están presentes. La celda (i,j) de la matriz cuenta en cuántas subsubcuencas coexisten los tipos i y j. La diagonal muestra en cuántas subsubcuencas aparece cada tipo.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Alta co-ocurrencia Conflicto-Iniciativa</strong>: Las comunidades están respondiendo activamente a los problemas. Es una señal positiva de capacidad de acción.<br>
+• <strong>Alta co-ocurrencia Conflicto-Oportunidad</strong>: Hay ventanas de acción donde hay tensión — momento estratégico para intervenir.<br>
+• <strong>Baja co-ocurrencia Conflicto-Actor</strong>: Los actores mapeados no están en las zonas de conflicto — posible desconexión entre gobernanza y realidad territorial.<br>
+• <strong>Diagonal alta en Conflictos pero baja en Iniciativas</strong>: Hay muchas subsubcuencas con conflictos pero pocas con respuestas organizadas — brecha territorial.<br><br>
+<strong>Unidad de análisis</strong>: Se usa la subsubcuenca como unidad territorial mínima, siguiendo la jerarquía de la DGA: cuenca → subcuenca → subsubcuenca.
+</div>""", unsafe_allow_html=True)
     sub_t = {}
     for o in obs:
         p = pm.get(o["punto_id"])
@@ -628,7 +678,18 @@ def sec_red():
 
     # Actores
     st.subheader("👥 Red de actores")
-    with st.expander("📐 Metodología"): st.markdown('<div class="meth">Actores extraídos de campos actor_nombre y conflicto_actores. Tamaño = menciones. Multi-cuenca (rojo) = articuladores territoriales clave.</div>', unsafe_allow_html=True)
+    with st.expander("📐 Metodología: Red de actores"):
+        st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> Un mapa de burbujas de los actores territoriales mencionados en los registros, mostrando su frecuencia y alcance geográfico.<br><br>
+<strong>¿Cómo se construye?</strong> Se extraen nombres de actores de dos fuentes: (1) el campo "nombre del actor" en registros tipo Actor, y (2) el campo "actores involucrados" en registros tipo Conflicto (separando por "vs" y "y"). Se cuenta cuántas veces aparece cada actor y en cuántas subcuencas tiene presencia.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Eje vertical (Menciones)</strong>: Cuántas veces aparece el actor en los registros. Más alto = más relevante en el territorio.<br>
+• <strong>Eje horizontal (Subcuencas)</strong>: En cuántas subcuencas tiene presencia. Más a la derecha = mayor alcance territorial.<br>
+• <strong>Tamaño de la burbuja</strong>: Proporcional a las menciones.<br>
+• <strong>Color rojo (Multi-cuenca)</strong>: Actores que aparecen en más de una cuenca. Son nodos articuladores clave del territorio — organizaciones que conectan realidades de distintas cuencas.<br>
+• <strong>Color verde (Local)</strong>: Actores concentrados en una sola cuenca. Tienen conocimiento profundo del territorio local.<br><br>
+<strong>Para la gobernanza</strong>: Los actores multi-cuenca con muchas menciones son aliados estratégicos para iniciativas de escala regional. Los actores locales con pocas menciones pero presencia en zonas de conflicto son voces que necesitan ser escuchadas.
+</div>""", unsafe_allow_html=True)
     am = {}
     for o in obs:
         p = pm.get(o["punto_id"]); sub = p.get("subcuenca", "N/A") if p else "N/A"
@@ -653,7 +714,18 @@ def sec_red():
 
     # Conflicto → respuesta
     st.subheader("⚡ Balance conflicto → respuesta por subcuenca")
-    with st.expander("📐 Metodología"): st.markdown('<div class="meth">Ratio Iniciativas/Conflictos por subcuenca. Sobre la diagonal = respuesta activa. Bajo = brecha. Tamaño = oportunidades detectadas.</div>', unsafe_allow_html=True)
+    with st.expander("📐 Metodología: Balance conflicto → respuesta"):
+        st.markdown("""<div class="meth">
+<strong>¿Qué muestra?</strong> La relación entre conflictos e iniciativas en cada subcuenca, revelando dónde hay capacidad de respuesta y dónde hay brechas.<br><br>
+<strong>¿Cómo se construye?</strong> Para cada subcuenca se cuenta: (C) número de conflictos, (I) número de iniciativas, (O) número de oportunidades. Se calcula el ratio I/C. Se grafica C en eje X, I en eje Y, y O como tamaño del punto.<br><br>
+<strong>¿Cómo interpretarlo?</strong><br>
+• <strong>Línea diagonal punteada</strong>: Representa el equilibrio 1:1 (tantas iniciativas como conflictos).<br>
+• <strong>Puntos SOBRE la diagonal (verde ✅)</strong>: Subcuencas con más iniciativas que conflictos. La comunidad está respondiendo activamente.<br>
+• <strong>Puntos BAJO la diagonal (rojo ⚠️)</strong>: Subcuencas donde los conflictos superan las iniciativas. Hay una brecha de respuesta.<br>
+• <strong>Puntos en el eje X (sin Y)</strong>: Subcuencas con conflictos pero CERO iniciativas — las más urgentes de atender.<br>
+• <strong>Puntos grandes</strong>: Subcuencas con muchas oportunidades detectadas — hay potencial de acción si se movilizan recursos.<br><br>
+<strong>Uso estratégico</strong>: Las subcuencas bajo la diagonal con puntos grandes (conflictos + oportunidades pero pocas iniciativas) son las de mayor potencial de impacto si se interviene.
+</div>""", unsafe_allow_html=True)
     sb = {}
     for o in obs:
         p = pm.get(o["punto_id"])
