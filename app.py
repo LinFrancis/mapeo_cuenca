@@ -78,6 +78,48 @@ def show_enlaces(enl):
     for u in (enl.get("fotos") or []): st.markdown(f"📷 [Foto]({u})")
     for u in (enl.get("otros") or []): st.markdown(f"📎 [Enlace]({u})")
 
+def territory_filter(obs, pts, prefix=""):
+    """Shared cascading territory filter. Returns filtered (obs, pts, pm, label)."""
+    pm = {p["id"]: p for p in pts}
+    # Build cuenca list
+    cuencas = sorted(set(p.get("cuenca", "N/A") for p in pts if p.get("cuenca") and p["cuenca"] != "N/A"))
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: ft = st.multiselect("Tipo", TIPOS_REGISTRO, default=TIPOS_REGISTRO, key=f"{prefix}_ft")
+    with c2: fc = st.selectbox("Cuenca", ["Todas"] + cuencas, key=f"{prefix}_fc")
+
+    # Cascading subcuenca
+    subs_disp = sorted(set(p.get("subcuenca", "N/A") for p in pts
+                           if (fc == "Todas" or p.get("cuenca") == fc) and p.get("subcuenca") and p["subcuenca"] != "N/A"))
+    with c3: fsub = st.selectbox("Subcuenca", ["Todas"] + subs_disp, key=f"{prefix}_fsub")
+
+    # Cascading subsubcuenca
+    ssubs_disp = sorted(set(p.get("subsubcuenca", "N/A") for p in pts
+                            if (fc == "Todas" or p.get("cuenca") == fc)
+                            and (fsub == "Todas" or p.get("subcuenca") == fsub)
+                            and p.get("subsubcuenca") and p["subsubcuenca"] != "N/A"))
+    with c4: fssub = st.selectbox("Subsubcuenca", ["Todas"] + ssubs_disp, key=f"{prefix}_fssub")
+
+    # Filter
+    f_obs = []
+    for o in obs:
+        if o["tipo"] not in ft: continue
+        p = pm.get(o.get("punto_id"))
+        if not p: continue
+        if fc != "Todas" and p.get("cuenca") != fc: continue
+        if fsub != "Todas" and p.get("subcuenca") != fsub: continue
+        if fssub != "Todas" and p.get("subsubcuenca") != fssub: continue
+        f_obs.append(o)
+
+    # Build territory label
+    parts = []
+    if fc != "Todas": parts.append(fc)
+    if fsub != "Todas": parts.append(fsub)
+    if fssub != "Todas": parts.append(fssub)
+    label = " → ".join(parts) if parts else "Todo el territorio"
+
+    st.caption(f"📍 **{label}** — {len(f_obs)} registros filtrados")
+    return f_obs, pts, pm, label
+
 def show_cuenca_hierarchy(p):
     """Show cuenca/subcuenca/subsubcuenca badges."""
     for lb, k, icon in [("Cuenca", "cuenca", "🏔️"), ("Subcuenca", "subcuenca", "🏞️"), ("Subsubcuenca", "subsubcuenca", "💧")]:
@@ -522,14 +564,24 @@ def sec_mapa():
 def sec_dashboard():
     hero("Diagnóstico territorial colectivo")
     demo_banner()
-    st.markdown('<div class="edu">Radiografía del territorio basada en los registros de todos los participantes. Las cuencas se definen según la <a href="https://dga.mop.gob.cl/administracionrecursoshidricos/mapoteca/Paginas/default.aspx" target="_blank">DGA</a>.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="edu">Filtra por cuenca, subcuenca o subsubcuenca para ver el diagnóstico de <strong>tu territorio específico</strong>. Las cuencas se definen según la <a href="https://dga.mop.gob.cl/administracionrecursoshidricos/mapoteca/Paginas/default.aspx" target="_blank">DGA</a>.</div>', unsafe_allow_html=True)
 
     s = stats()
     if not s or s.get("total", 0) == 0: st.info("Sin datos."); return
-    bt = s.get("by_tipo", {})
 
+    # FILTROS TERRITORIALES
+    obs_f, pts, pm, territory_label = territory_filter(s["observaciones"], s["puntos"], prefix="dash")
+
+    if len(obs_f) == 0:
+        st.info("No hay registros para los filtros seleccionados."); footer(); return
+
+    # Recalculate stats from filtered data
+    bt = {}
+    for o in obs_f: bt[o["tipo"]] = bt.get(o["tipo"], 0) + 1
+
+    # Metrics
     cols = st.columns(5)
-    for col, (n, l, c) in zip(cols, [(s["total"], "Total", "#1E293B"), (bt.get("Conflicto", 0), "Conflictos", COLORS["Conflicto"]),
+    for col, (n, l, c) in zip(cols, [(len(obs_f), "Total", "#1E293B"), (bt.get("Conflicto", 0), "Conflictos", COLORS["Conflicto"]),
         (bt.get("Iniciativa", 0), "Iniciativas", COLORS["Iniciativa"]), (bt.get("Actor", 0), "Actores", COLORS["Actor"]),
         (bt.get("Oportunidad", 0), "Oportunidades", COLORS["Oportunidad"])]):
         col.markdown(f'<div class="mc"><div class="n" style="color:{c}">{n}</div><div class="l">{l}</div></div>', unsafe_allow_html=True)
@@ -540,39 +592,38 @@ def sec_dashboard():
         st.subheader("Distribución por tipo")
         with st.expander("📐 Metodología: Distribución por tipo"):
             st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> La proporción de cada tipo de registro (conflicto, iniciativa, actor, oportunidad) sobre el total de registros del territorio.<br><br>
-<strong>¿Cómo se construye?</strong> Se cuenta el número de registros por tipo y se calcula el porcentaje sobre el total. El gráfico tipo "donut" (torta con hueco) permite comparar visualmente las proporciones.<br><br>
+<strong>¿Qué muestra?</strong> La proporción de cada tipo de registro sobre el total filtrado.<br><br>
+<strong>¿Cómo se construye?</strong> Se cuenta el número de registros por tipo dentro del filtro territorial seleccionado.<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Predominio de conflictos (rojo > 40%)</strong>: El territorio está en tensión. Las comunidades reportan más problemas que soluciones.<br>
-• <strong>Predominio de iniciativas (verde > 40%)</strong>: Hay capacidad de acción comunitaria. Las respuestas organizadas superan a los problemas reportados.<br>
-• <strong>Distribución equilibrada</strong>: Señal saludable — el territorio tiene problemas identificados pero también respuestas activas, actores mapeados y oportunidades detectadas.<br>
-• <strong>Pocos actores mapeados (azul < 10%)</strong>: Puede indicar que falta mapear la red de actores del territorio, lo que dificulta la coordinación.
+• <strong>Predominio de conflictos (rojo > 40%)</strong>: Territorio en tensión.<br>
+• <strong>Predominio de iniciativas (verde > 40%)</strong>: Capacidad de acción comunitaria.<br>
+• <strong>Distribución equilibrada</strong>: Señal saludable — problemas identificados con respuestas activas.<br>
+• <strong>Pocos actores (azul < 10%)</strong>: Falta mapear la red de actores, lo que dificulta la coordinación.
 </div>""", unsafe_allow_html=True)
-        fig = px.pie(names=list(bt.keys()), values=list(bt.values()), color=list(bt.keys()), color_discrete_map=COLORS, hole=0.45)
-        fig.update_layout(margin=dict(t=20, b=20), height=320, legend=dict(orientation="h", y=-0.15))
-        fig.update_traces(textinfo="percent+label", textposition="outside")
-        st.plotly_chart(fig, use_container_width=True)
+        if bt:
+            fig = px.pie(names=list(bt.keys()), values=list(bt.values()), color=list(bt.keys()), color_discrete_map=COLORS, hole=0.45)
+            fig.update_layout(margin=dict(t=20, b=20), height=320, legend=dict(orientation="h", y=-0.15))
+            fig.update_traces(textinfo="percent+label", textposition="outside")
+            st.plotly_chart(fig, use_container_width=True)
 
     with c2:
         st.subheader("Radar de dimensiones")
         with st.expander("📐 Metodología: Radar de dimensiones"):
             st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> El perfil multidimensional del territorio en 6 ejes: agua, entorno, tejido social, gobernanza, financiamiento y potencial de regeneración.<br><br>
-<strong>¿Cómo se construye?</strong> Cada dimensión tiene una escala ordinal (ej: Muy escasa=1, Escasa=2, Suficiente=3, Abundante=4). Se calcula el promedio ponderado de todas las respuestas y se normaliza a 0-100%, donde 100% es el valor máximo posible.<br><br>
+<strong>¿Qué muestra?</strong> El perfil multidimensional del territorio filtrado en 6 ejes.<br><br>
+<strong>¿Cómo se construye?</strong> Promedio ponderado de cada dimensión normalizado a 0-100%.<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Valores cerca del centro (< 30%)</strong>: Dimensiones críticas que requieren atención urgente.<br>
-• <strong>Valores cerca del borde (> 70%)</strong>: Fortalezas del territorio sobre las que se puede construir.<br>
-• <strong>Radar "aplastado" en una dirección</strong>: Desequilibrio sistémico. Ej: buena gobernanza pero sin financiamiento indica que hay voluntad institucional pero faltan recursos.<br>
-• <strong>Radar uniformemente bajo</strong>: Territorio en crisis integral — se necesita intervención en múltiples frentes simultáneamente.<br>
-• <strong>Radar uniformemente alto</strong>: Territorio resiliente con buenas condiciones para proyectos ambiciosos.<br><br>
-<strong>Limitación</strong>: Los valores reflejan la percepción agregada de los participantes, no mediciones técnicas. La representatividad depende de la diversidad de actores que participan.
+• <strong>Cerca del centro (< 30%)</strong>: Dimensiones críticas.<br>
+• <strong>Cerca del borde (> 70%)</strong>: Fortalezas del territorio.<br>
+• <strong>Radar aplastado</strong>: Desequilibrio sistémico.<br>
+• <strong>Uniformemente bajo</strong>: Crisis integral. <strong>Uniformemente alto</strong>: Territorio resiliente.
 </div>""", unsafe_allow_html=True)
-        dims = s.get("dimensiones", {}); rv, rl = [], []
+        rv, rl = [], []
         for d, lb in DIM_LABELS.items():
-            vs = dims.get(d, {}); sm = SCORE_MAP.get(d, {}); ts, tc = 0, 0
-            for v, cnt in vs.items():
-                sc = sm.get(v, 0)
-                if sc > 0: ts += sc * cnt; tc += cnt
+            sm = SCORE_MAP.get(d, {}); ts, tc = 0, 0
+            for o in obs_f:
+                sc = sm.get(o.get(f"dim_{d}", ""), 0)
+                if sc > 0: ts += sc; tc += 1
             avg = (ts / tc) if tc > 0 else 0; mx = max(sm.values()) if sm else 4
             rv.append(round((avg / mx) * 100, 1)); rl.append(lb)
         fig = go.Figure()
@@ -580,89 +631,94 @@ def sec_dashboard():
         fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False)), margin=dict(t=30, b=30, l=60, r=60), height=320, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
-    # By cuenca stacked bar
-    st.divider(); st.subheader("Registros por cuenca")
-    with st.expander("📐 Metodología: Registros por cuenca"):
+    # Stacked bar by subcuenca (within filtered territory)
+    st.divider(); st.subheader("Registros por subcuenca")
+    with st.expander("📐 Metodología: Registros por subcuenca"):
         st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> La cantidad y composición de registros en cada cuenca hidrográfica, desglosados por tipo.<br><br>
-<strong>¿Cómo se construye?</strong> Se agrupa cada registro por la cuenca donde fue ubicado geográficamente (según la delimitación de la DGA). Los segmentos de color dentro de cada barra representan los tipos de registro.<br><br>
+<strong>¿Qué muestra?</strong> La composición de registros desglosada por subcuenca dentro del filtro seleccionado.<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Barras altas</strong>: Cuencas con mayor actividad de mapeo participativo (más personas reportando).<br>
-• <strong>Barras predominantemente rojas</strong>: Cuencas en conflicto donde se necesitan más iniciativas de respuesta.<br>
-• <strong>Barras con variedad de colores</strong>: Cuencas con ecosistemas de gobernanza más desarrollados.<br>
-• <strong>Cuencas sin barra</strong>: No significa que no hay problemas — puede indicar falta de participantes en esa zona.<br><br>
-<strong>Nota</strong>: La altura de la barra refleja la participación, no necesariamente la gravedad. Una cuenca con 3 conflictos críticos puede ser más urgente que una con 20 registros de bajo impacto.
+• <strong>Barras predominantemente rojas</strong>: Subcuencas en conflicto sin respuesta organizada.<br>
+• <strong>Barras con variedad de colores</strong>: Ecosistemas de gobernanza más desarrollados.<br>
+• <strong>Subcuencas sin barra</strong>: Puede indicar falta de participantes, no ausencia de problemas.
 </div>""", unsafe_allow_html=True)
-    obs, pts = s["observaciones"], s["puntos"]; pm = {p["id"]: p for p in pts}
     cd = {}
-    for o in obs:
+    for o in obs_f:
         p = pm.get(o["punto_id"])
-        if p and p.get("cuenca", "N/A") != "N/A": cd.setdefault(p["cuenca"], {}).setdefault(o["tipo"], 0); cd[p["cuenca"]][o["tipo"]] += 1
+        if p:
+            sub = p.get("subcuenca", "N/A")
+            if sub != "N/A": cd.setdefault(sub, {}).setdefault(o["tipo"], 0); cd[sub][o["tipo"]] += 1
     if cd:
-        rows = [{"Cuenca": c, "Tipo": t, "Cantidad": n} for c, ts in cd.items() for t, n in ts.items() if n > 0]
-        fig = px.bar(pd.DataFrame(rows), x="Cuenca", y="Cantidad", color="Tipo", color_discrete_map=COLORS, barmode="stack")
+        rows = [{"Subcuenca": c, "Tipo": t, "Cantidad": n} for c, ts in cd.items() for t, n in ts.items() if n > 0]
+        fig = px.bar(pd.DataFrame(rows), x="Subcuenca", y="Cantidad", color="Tipo", color_discrete_map=COLORS, barmode="stack")
         fig.update_layout(margin=dict(t=20, b=20), height=350, xaxis_tickangle=-30)
         st.plotly_chart(fig, use_container_width=True)
 
-    # Heatmap dimensions by cuenca
-    st.divider(); st.subheader("Dimensiones por cuenca")
+    # Heatmap dimensions by subcuenca
+    st.divider(); st.subheader("Dimensiones por subcuenca")
     with st.expander("📐 Metodología: Heatmap de dimensiones"):
         st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> Una matriz de calor que cruza cuencas (filas) con dimensiones transversales (columnas). Cada celda muestra el score promedio normalizado (0-100%) de esa dimensión en esa cuenca.<br><br>
-<strong>¿Cómo se construye?</strong> Para cada par cuenca-dimensión, se toman todos los registros ubicados en esa cuenca, se convierten sus respuestas a valores numéricos (ej: "Muy escasa"=1, "Abundante"=4), se promedian y se normalizan al rango 0-100%.<br><br>
+<strong>¿Qué muestra?</strong> Matriz subcuenca × dimensión. Cada celda = score promedio normalizado (0-100%).<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Celdas rojas (< 40%)</strong>: Dimensión en estado crítico en esa cuenca. Requiere atención prioritaria.<br>
-• <strong>Celdas verdes (> 60%)</strong>: Dimensión en buen estado. Es una fortaleza territorial.<br>
-• <strong>Columna entera en rojo</strong>: Una dimensión es débil en TODAS las cuencas — problema estructural del territorio que trasciende cuencas individuales.<br>
-• <strong>Fila entera en rojo</strong>: Una cuenca está en estado crítico integral — todas sus dimensiones son deficientes.<br>
-• <strong>Patrón diagonal</strong>: Las dimensiones no son independientes. Si agua y entorno están ambas en rojo, probablemente hay un problema de degradación ecosistémica que afecta ambas.
+• <strong>Rojo (< 40%)</strong>: Dimensión crítica. <strong>Verde (> 60%)</strong>: Fortaleza.<br>
+• <strong>Columna entera roja</strong>: Dimensión débil en todo el territorio (problema estructural).<br>
+• <strong>Fila entera roja</strong>: Subcuenca en estado crítico integral.
 </div>""", unsafe_allow_html=True)
     cdims = {}
-    for o in obs:
+    for o in obs_f:
         p = pm.get(o["punto_id"])
-        if not p or p.get("cuenca", "N/A") == "N/A": continue
-        c = p["cuenca"]; cdims.setdefault(c, {d: [] for d in SCORE_MAP})
+        if not p: continue
+        sub = p.get("subcuenca", "N/A")
+        if sub == "N/A": continue
+        cdims.setdefault(sub, {d: [] for d in SCORE_MAP})
         for d, sm in SCORE_MAP.items():
             sc = sm.get(o.get(f"dim_{d}", ""), 0)
-            if sc > 0: cdims[c][d].append(sc)
+            if sc > 0: cdims[sub][d].append(sc)
     if cdims:
         hr = []
         for c, dd in cdims.items():
-            row = {"Cuenca": c}
+            row = {"Subcuenca": c}
             for d, lb in DIM_LABELS.items():
                 vs = dd.get(d, []); mx = max(SCORE_MAP[d].values()) if SCORE_MAP.get(d) else 4
                 row[lb] = round((sum(vs) / len(vs) / mx * 100), 0) if vs else 0
             hr.append(row)
-        dh = pd.DataFrame(hr).set_index("Cuenca")
+        dh = pd.DataFrame(hr).set_index("Subcuenca")
         fig = px.imshow(dh, aspect="auto", color_continuous_scale=["#EF4444", "#FCD34D", "#22C55E"], labels=dict(color="Score %"))
-        fig.update_layout(margin=dict(t=20, b=20), height=300)
+        fig.update_layout(margin=dict(t=20, b=20), height=max(200, len(hr) * 40 + 80))
         st.plotly_chart(fig, use_container_width=True)
+
+    # Timeline
+    st.divider(); st.subheader("Actividad reciente")
+    for o in obs_f[:12]:
+        t = o["tipo"]; f = o.get("created_at", "")[:10]
+        st.markdown(f'<div style="display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid #F1F5F9"><span class="tb t{t[0].lower()}">{EMOJIS[t]} {t}</span><span style="flex:1;font-size:.9rem"><strong>{o["titulo"]}</strong></span><span style="color:#94A3B8;font-size:.8rem">{f}</span></div>', unsafe_allow_html=True)
     footer()
 
 # ===== RED =====
 def sec_red():
     hero("Análisis de conexiones territoriales")
     demo_banner()
-    st.markdown('<div class="edu">Los registros no son independientes. Este análisis revela <strong>relaciones ocultas</strong> entre conflictos, iniciativas, actores y oportunidades que comparten territorio.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="edu">Filtra por cuenca, subcuenca o subsubcuenca para analizar las conexiones de <strong>tu territorio</strong>. Los registros no son independientes — este análisis revela relaciones ocultas.</div>', unsafe_allow_html=True)
     s = stats()
     if not s or s.get("total", 0) < 5: st.info("Se necesitan al menos 5 registros."); return
-    obs, pts = s["observaciones"], s["puntos"]; pm = {p["id"]: p for p in pts}
+
+    # FILTROS TERRITORIALES
+    obs_f, pts, pm, territory_label = territory_filter(s["observaciones"], s["puntos"], prefix="red")
+
+    if len(obs_f) < 3:
+        st.info(f"Solo {len(obs_f)} registros en {territory_label}. Se necesitan al menos 3 para el análisis."); footer(); return
 
     # Co-ocurrencia
     st.subheader("🗺️ Co-ocurrencia por subsubcuenca")
     with st.expander("📐 Metodología: Matriz de co-ocurrencia"):
         st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> En cuántas unidades territoriales (subsubcuencas) coexisten distintos tipos de registro. Revela patrones de asociación territorial.<br><br>
-<strong>¿Cómo se construye?</strong> Para cada subsubcuenca, se verifica qué tipos de registro están presentes. La celda (i,j) de la matriz cuenta en cuántas subsubcuencas coexisten los tipos i y j. La diagonal muestra en cuántas subsubcuencas aparece cada tipo.<br><br>
+<strong>¿Qué muestra?</strong> En cuántas subsubcuencas coexisten distintos tipos de registro dentro del territorio filtrado.<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Alta co-ocurrencia Conflicto-Iniciativa</strong>: Las comunidades están respondiendo activamente a los problemas. Es una señal positiva de capacidad de acción.<br>
-• <strong>Alta co-ocurrencia Conflicto-Oportunidad</strong>: Hay ventanas de acción donde hay tensión — momento estratégico para intervenir.<br>
-• <strong>Baja co-ocurrencia Conflicto-Actor</strong>: Los actores mapeados no están en las zonas de conflicto — posible desconexión entre gobernanza y realidad territorial.<br>
-• <strong>Diagonal alta en Conflictos pero baja en Iniciativas</strong>: Hay muchas subsubcuencas con conflictos pero pocas con respuestas organizadas — brecha territorial.<br><br>
-<strong>Unidad de análisis</strong>: Se usa la subsubcuenca como unidad territorial mínima, siguiendo la jerarquía de la DGA: cuenca → subcuenca → subsubcuenca.
+• <strong>Alta co-ocurrencia Conflicto-Iniciativa</strong>: Comunidades respondiendo activamente.<br>
+• <strong>Alta co-ocurrencia Conflicto-Oportunidad</strong>: Ventanas de acción donde hay tensión.<br>
+• <strong>Baja co-ocurrencia Conflicto-Actor</strong>: Desconexión entre gobernanza y realidad territorial.
 </div>""", unsafe_allow_html=True)
     sub_t = {}
-    for o in obs:
+    for o in obs_f:
         p = pm.get(o["punto_id"])
         if p and p.get("subsubcuenca", "N/A") != "N/A": sub_t.setdefault(p["subsubcuenca"], []).append(o["tipo"])
     tl = TIPOS_REGISTRO; cooc = pd.DataFrame(0, index=tl, columns=tl)
@@ -680,18 +736,11 @@ def sec_red():
     st.subheader("👥 Red de actores")
     with st.expander("📐 Metodología: Red de actores"):
         st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> Un mapa de burbujas de los actores territoriales mencionados en los registros, mostrando su frecuencia y alcance geográfico.<br><br>
-<strong>¿Cómo se construye?</strong> Se extraen nombres de actores de dos fuentes: (1) el campo "nombre del actor" en registros tipo Actor, y (2) el campo "actores involucrados" en registros tipo Conflicto (separando por "vs" y "y"). Se cuenta cuántas veces aparece cada actor y en cuántas subcuencas tiene presencia.<br><br>
-<strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Eje vertical (Menciones)</strong>: Cuántas veces aparece el actor en los registros. Más alto = más relevante en el territorio.<br>
-• <strong>Eje horizontal (Subcuencas)</strong>: En cuántas subcuencas tiene presencia. Más a la derecha = mayor alcance territorial.<br>
-• <strong>Tamaño de la burbuja</strong>: Proporcional a las menciones.<br>
-• <strong>Color rojo (Multi-cuenca)</strong>: Actores que aparecen en más de una cuenca. Son nodos articuladores clave del territorio — organizaciones que conectan realidades de distintas cuencas.<br>
-• <strong>Color verde (Local)</strong>: Actores concentrados en una sola cuenca. Tienen conocimiento profundo del territorio local.<br><br>
-<strong>Para la gobernanza</strong>: Los actores multi-cuenca con muchas menciones son aliados estratégicos para iniciativas de escala regional. Los actores locales con pocas menciones pero presencia en zonas de conflicto son voces que necesitan ser escuchadas.
+<strong>¿Qué muestra?</strong> Actores mencionados en los registros filtrados. Tamaño = frecuencia. Color rojo = presencia en múltiples cuencas.<br><br>
+<strong>Para la gobernanza</strong>: Los actores multi-cuenca son aliados estratégicos para iniciativas regionales. Los actores locales con presencia en zonas de conflicto son voces que necesitan ser escuchadas.
 </div>""", unsafe_allow_html=True)
     am = {}
-    for o in obs:
+    for o in obs_f:
         p = pm.get(o["punto_id"]); sub = p.get("subcuenca", "N/A") if p else "N/A"
         names = []
         if o.get("actor_nombre"): names.append(o["actor_nombre"])
@@ -716,18 +765,14 @@ def sec_red():
     st.subheader("⚡ Balance conflicto → respuesta por subcuenca")
     with st.expander("📐 Metodología: Balance conflicto → respuesta"):
         st.markdown("""<div class="meth">
-<strong>¿Qué muestra?</strong> La relación entre conflictos e iniciativas en cada subcuenca, revelando dónde hay capacidad de respuesta y dónde hay brechas.<br><br>
-<strong>¿Cómo se construye?</strong> Para cada subcuenca se cuenta: (C) número de conflictos, (I) número de iniciativas, (O) número de oportunidades. Se calcula el ratio I/C. Se grafica C en eje X, I en eje Y, y O como tamaño del punto.<br><br>
+<strong>¿Qué muestra?</strong> Relación conflictos vs iniciativas en cada subcuenca del territorio filtrado.<br><br>
 <strong>¿Cómo interpretarlo?</strong><br>
-• <strong>Línea diagonal punteada</strong>: Representa el equilibrio 1:1 (tantas iniciativas como conflictos).<br>
-• <strong>Puntos SOBRE la diagonal (verde ✅)</strong>: Subcuencas con más iniciativas que conflictos. La comunidad está respondiendo activamente.<br>
-• <strong>Puntos BAJO la diagonal (rojo ⚠️)</strong>: Subcuencas donde los conflictos superan las iniciativas. Hay una brecha de respuesta.<br>
-• <strong>Puntos en el eje X (sin Y)</strong>: Subcuencas con conflictos pero CERO iniciativas — las más urgentes de atender.<br>
-• <strong>Puntos grandes</strong>: Subcuencas con muchas oportunidades detectadas — hay potencial de acción si se movilizan recursos.<br><br>
-<strong>Uso estratégico</strong>: Las subcuencas bajo la diagonal con puntos grandes (conflictos + oportunidades pero pocas iniciativas) son las de mayor potencial de impacto si se interviene.
+• <strong>Sobre la diagonal (✅)</strong>: Respuesta activa. <strong>Bajo la diagonal (⚠️)</strong>: Brecha.<br>
+• <strong>Puntos grandes</strong>: Muchas oportunidades detectadas — potencial de acción.<br>
+• <strong>Uso estratégico</strong>: Subcuencas bajo la diagonal con puntos grandes son las de mayor potencial de impacto.
 </div>""", unsafe_allow_html=True)
     sb = {}
-    for o in obs:
+    for o in obs_f:
         p = pm.get(o["punto_id"])
         if p and p.get("subcuenca", "N/A") != "N/A":
             sb.setdefault(p["subcuenca"], {"Conflicto": 0, "Iniciativa": 0, "Oportunidad": 0})
